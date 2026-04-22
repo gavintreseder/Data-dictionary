@@ -1,0 +1,65 @@
+{
+  "risk": [
+    { "text": "Effect of uncertainty on objectives.", "reference": "ISO 31000:2018, §3.1" }
+  ],
+  "control": [
+    { "text": "Measure that maintains and/or modifies risk.", "reference": "ISO 31000:2018, §3.8" }
+  ],
+  "governance": [
+    { "text": "System by which the achievement of objectives is directed and controlled at the highest level.", "reference": "ISO 37000:2021" }
+  ],
+  "process": [
+    { "text": "Set of interrelated or interacting activities that use inputs to deliver an intended result.", "reference": "ISO 9000:2015, §3.4.1" }
+  ],
+  "procedure": [
+    { "text": "Specified way to carry out an activity or a process.", "reference": "ISO 9000:2015, §3.4.5" }
+  ],
+  "policy": [
+    { "text": "Intentions and direction of an organization, as formally expressed by its top management.", "reference": "ISO 9000:2015, §3.5.8" }
+  ],
+  "compliance": [
+    { "text": "Meeting all the organization's compliance obligations.", "reference": "ISO 37301:2021, §3.2.1" }
+  ],
+  "standard": [
+    { "text": "Document, established by consensus and approved by a recognized body, that provides rules, guidelines or characteristics.", "reference": "ISO/IEC Guide 2:2004" }
+  ],
+  "guideline": [
+    { "text": "Recommendation that is not mandatory but represents accepted good practice.", "reference": "ISO/IEC Directives, Part 2" }
+  ],
+  "asset": [
+    { "text": "Item, thing or entity that has potential or actual value to an organization.", "reference": "ISO 55000:2014, §3.2.1" }
+  ],
+  "stakeholder": [
+    { "text": "Person or organization that can affect, be affected by, or perceive itself to be affected by a decision or activity.", "reference": "ISO 9000:2015, §3.2.3" }
+  ],
+  "objective": [
+    { "text": "Result to be achieved.", "reference": "ISO 9000:2015, §3.7.1" }
+  ],
+  "incident": [
+    { "text": "Event that has caused or has the potential to cause injury, ill-health or loss.", "reference": "ISO 45001:2018, §3.35" }
+  ],
+  "capability": [
+    { "text": "Ability to apply knowledge and skills to achieve intended results.", "reference": "ISO 9000:2015, §3.6.12" }
+  ],
+  "record": [
+    { "text": "Document stating results achieved or providing evidence of activities performed.", "reference": "ISO 9000:2015, §3.8.10" }
+  ],
+  "service": [
+    { "text": "Output of an organization with at least one activity necessarily performed between the organization and the customer.", "reference": "ISO 9000:2015, §3.7.7" }
+  ],
+  "data": [
+    { "text": "Reinterpretable representation of information in a formalized manner suitable for communication, interpretation or processing.", "reference": "ISO/IEC 2382:2015" }
+  ],
+  "information": [
+    { "text": "Knowledge concerning objects, such as facts, events, things, processes or ideas, including concepts, that within a certain context has a particular meaning.", "reference": "ISO/IEC 2382:2015" }
+  ],
+  "system": [
+    { "text": "Set of interrelated or interacting elements.", "reference": "ISO 9000:2015, §3.5.1" }
+  ],
+  "framework": [
+    { "text": "Set of components providing foundations and organizational arrangements for designing, implementing, monitoring, reviewing and continually improving processes throughout the organization.", "reference": "ISO 31000:2018, §3.4" }
+  ],
+  "obligation": [
+    { "text": "Requirement that an organization is expected, or has chosen, to comply with.", "reference": "ISO 37301:2021, §3.1.2" }
+  ]
+}
