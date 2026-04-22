@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1.7
-
 # ---------- Stage 1: build the Next.js frontend as a static export ----------
 FROM node:20-alpine AS frontend-builder
 
@@ -7,8 +5,7 @@ WORKDIR /app/frontend
 
 # Install deps using the lockfile for reproducibility when present.
 COPY frontend/package.json frontend/package-lock.json* ./
-RUN --mount=type=cache,target=/root/.npm \
-    if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; \
+RUN if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; \
     else npm install --no-audit --no-fund; fi
 
 COPY frontend/ ./
