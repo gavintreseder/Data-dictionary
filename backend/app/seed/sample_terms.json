@@ -1,0 +1,241 @@
+{
+  "sources": [
+    {
+      "name": "Business Glossary",
+      "slug": "business",
+      "source_type": "user_defined",
+      "homepage": null,
+      "description": "In-house definitions maintained by the business."
+    },
+    {
+      "name": "Free Dictionary",
+      "slug": "free-dictionary",
+      "source_type": "online",
+      "homepage": "https://dictionaryapi.dev",
+      "description": "Open dictionary API, no key required."
+    },
+    {
+      "name": "Merriam-Webster",
+      "slug": "merriam-webster",
+      "source_type": "online",
+      "homepage": "https://www.merriam-webster.com",
+      "description": "Merriam-Webster dictionary (API key required)."
+    },
+    {
+      "name": "AI Consolidated",
+      "slug": "llm",
+      "source_type": "llm_generated",
+      "homepage": null,
+      "description": "Definitions produced by an LLM from other sources."
+    },
+    {
+      "name": "PDF Import",
+      "slug": "pdf",
+      "source_type": "pdf_import",
+      "homepage": null,
+      "description": "Definitions extracted from uploaded documents."
+    }
+  ],
+  "terms": [
+    {
+      "term": "Process",
+      "category": "Operations",
+      "summary": "A defined sequence of activities that transforms inputs into outputs.",
+      "definitions": [
+        { "source": "business", "text": "A repeatable series of steps that produces a specific business outcome." }
+      ]
+    },
+    {
+      "term": "Procedure",
+      "category": "Operations",
+      "summary": "A prescribed way of carrying out a specific task within a process.",
+      "definitions": [
+        { "source": "business", "text": "The step-by-step instructions for performing an activity within a process." }
+      ]
+    },
+    {
+      "term": "Framework",
+      "category": "Architecture",
+      "summary": "A reusable structure that guides how work is organised.",
+      "definitions": [
+        { "source": "business", "text": "A set of standards, guidelines and practices that shape how a class of problems is solved." }
+      ]
+    },
+    {
+      "term": "Governance",
+      "category": "Risk & Compliance",
+      "summary": "The system of decision rights, accountability and oversight for an organisation.",
+      "definitions": [
+        { "source": "business", "text": "The framework of rules, relationships, systems and processes by which authority is exercised and controlled." }
+      ]
+    },
+    {
+      "term": "Compliance",
+      "category": "Risk & Compliance",
+      "summary": "Conformance with laws, regulations, standards and internal policies.",
+      "definitions": [
+        { "source": "business", "text": "Adherence to relevant legal, regulatory and internal requirements applicable to the organisation." }
+      ]
+    },
+    {
+      "term": "Risk",
+      "category": "Risk & Compliance",
+      "summary": "The effect of uncertainty on objectives.",
+      "definitions": [
+        { "source": "business", "text": "The possibility that events will occur and affect the achievement of strategic and operational objectives." }
+      ]
+    },
+    {
+      "term": "Control",
+      "category": "Risk & Compliance",
+      "summary": "A mechanism that reduces the likelihood or impact of a risk.",
+      "definitions": [
+        { "source": "business", "text": "Any action, policy or procedure implemented to mitigate risk and assure objectives are met." }
+      ]
+    },
+    {
+      "term": "Policy",
+      "category": "Risk & Compliance",
+      "summary": "A high-level statement of intent that directs decisions.",
+      "definitions": [
+        { "source": "business", "text": "A formal statement of organisational intent that guides decisions to achieve desired outcomes." }
+      ]
+    },
+    {
+      "term": "Standard",
+      "category": "Quality",
+      "summary": "A mandatory, measurable requirement.",
+      "definitions": [
+        { "source": "business", "text": "A documented, enforceable requirement that establishes uniform criteria, methods or practices." }
+      ]
+    },
+    {
+      "term": "Guideline",
+      "category": "Quality",
+      "summary": "A recommended practice that is not mandatory.",
+      "definitions": [
+        { "source": "business", "text": "A non-binding recommendation intended to inform judgement where standards do not apply." }
+      ]
+    },
+    {
+      "term": "Capability",
+      "category": "Strategy",
+      "summary": "The ability of an organisation to achieve a specific outcome.",
+      "definitions": [
+        { "source": "business", "text": "A combination of people, process and technology that enables a business outcome to be produced reliably." }
+      ]
+    },
+    {
+      "term": "Stakeholder",
+      "category": "Strategy",
+      "summary": "A person or group with an interest in, or affected by, the organisation.",
+      "definitions": [
+        { "source": "business", "text": "An individual, group or entity that can affect, be affected by, or perceive itself to be affected by an organisation's activities." }
+      ]
+    },
+    {
+      "term": "Objective",
+      "category": "Strategy",
+      "summary": "A specific, measurable outcome the organisation aims to achieve.",
+      "definitions": [
+        { "source": "business", "text": "A result to be achieved, typically expressed in measurable terms with a target date." }
+      ]
+    },
+    {
+      "term": "KPI",
+      "category": "Metrics",
+      "summary": "Key Performance Indicator — a measure of progress against an objective.",
+      "definitions": [
+        { "source": "business", "text": "A quantifiable measure used to evaluate success against a key business objective." }
+      ]
+    },
+    {
+      "term": "Metric",
+      "category": "Metrics",
+      "summary": "A quantifiable measure used to track and assess a state or process.",
+      "definitions": [
+        { "source": "business", "text": "A standard of measurement used to gauge performance, progress or quality." }
+      ]
+    },
+    {
+      "term": "Service",
+      "category": "Product",
+      "summary": "A means of delivering value to a customer by facilitating outcomes.",
+      "definitions": [
+        { "source": "business", "text": "A bounded set of capabilities offered to consumers that produces a defined business outcome." }
+      ]
+    },
+    {
+      "term": "Product",
+      "category": "Product",
+      "summary": "A good or service offered to a market to satisfy a need.",
+      "definitions": [
+        { "source": "business", "text": "Anything offered to a market for attention, acquisition, use or consumption that might satisfy a need." }
+      ]
+    },
+    {
+      "term": "Customer",
+      "category": "Product",
+      "summary": "A party that purchases or consumes the organisation's product or service.",
+      "definitions": [
+        { "source": "business", "text": "An individual or organisation that receives, pays for, or is the intended beneficiary of a product or service." }
+      ]
+    },
+    {
+      "term": "Data",
+      "category": "Information",
+      "summary": "Facts, figures and signals captured for processing or analysis.",
+      "definitions": [
+        { "source": "business", "text": "Recorded facts or observations that can be stored, exchanged and processed by information systems." }
+      ]
+    },
+    {
+      "term": "Information",
+      "category": "Information",
+      "summary": "Data that has been organised or interpreted to have meaning.",
+      "definitions": [
+        { "source": "business", "text": "Data that has been contextualised, categorised or analysed so it answers a specific question." }
+      ]
+    },
+    {
+      "term": "System",
+      "category": "Technology",
+      "summary": "A set of interacting components organised to achieve a defined purpose.",
+      "definitions": [
+        { "source": "business", "text": "A coordinated set of people, processes and technology that delivers a specific capability." }
+      ]
+    },
+    {
+      "term": "Record",
+      "category": "Information",
+      "summary": "Evidence of an activity or transaction.",
+      "definitions": [
+        { "source": "business", "text": "Information created, received and maintained as evidence of an organisational activity or obligation." }
+      ]
+    },
+    {
+      "term": "Incident",
+      "category": "Operations",
+      "summary": "An unplanned event that disrupts normal operations.",
+      "definitions": [
+        { "source": "business", "text": "An unplanned interruption or reduction in the quality of a service or process." }
+      ]
+    },
+    {
+      "term": "Asset",
+      "category": "Finance",
+      "summary": "A resource controlled by the organisation that is expected to produce value.",
+      "definitions": [
+        { "source": "business", "text": "A resource with economic or operational value that is owned or controlled by the organisation." }
+      ]
+    },
+    {
+      "term": "Obligation",
+      "category": "Risk & Compliance",
+      "summary": "A requirement the organisation must meet.",
+      "definitions": [
+        { "source": "business", "text": "A legal, regulatory or contractual duty the organisation is required to fulfil." }
+      ]
+    }
+  ]
+}

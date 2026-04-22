@@ -1,0 +1,118 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+
+  --color-background: oklch(0.99 0.005 260);
+  --color-foreground: oklch(0.18 0.02 260);
+  --color-card: oklch(1 0 0);
+  --color-card-foreground: oklch(0.18 0.02 260);
+  --color-muted: oklch(0.96 0.01 260);
+  --color-muted-foreground: oklch(0.5 0.02 260);
+  --color-border: oklch(0.92 0.01 260);
+  --color-input: oklch(0.92 0.01 260);
+  --color-ring: oklch(0.65 0.2 265);
+  --color-primary: oklch(0.52 0.2 265);
+  --color-primary-foreground: oklch(0.99 0 0);
+  --color-accent: oklch(0.95 0.02 265);
+  --color-accent-foreground: oklch(0.25 0.05 265);
+  --color-destructive: oklch(0.6 0.2 25);
+  --color-destructive-foreground: oklch(0.99 0 0);
+
+  --color-source-mw: oklch(0.55 0.18 260);
+  --color-source-free: oklch(0.6 0.18 150);
+  --color-source-business: oklch(0.58 0.22 310);
+  --color-source-llm: oklch(0.72 0.18 80);
+  --color-source-pdf: oklch(0.65 0.18 30);
+
+  --radius: 0.75rem;
+}
+
+.dark {
+  --color-background: oklch(0.17 0.02 265);
+  --color-foreground: oklch(0.96 0.01 260);
+  --color-card: oklch(0.22 0.025 265);
+  --color-card-foreground: oklch(0.96 0.01 260);
+  --color-muted: oklch(0.26 0.025 265);
+  --color-muted-foreground: oklch(0.7 0.02 260);
+  --color-border: oklch(0.3 0.02 265);
+  --color-input: oklch(0.3 0.02 265);
+  --color-ring: oklch(0.7 0.18 265);
+  --color-primary: oklch(0.72 0.18 265);
+  --color-primary-foreground: oklch(0.15 0.02 265);
+  --color-accent: oklch(0.28 0.04 265);
+  --color-accent-foreground: oklch(0.95 0.02 265);
+  --color-destructive: oklch(0.6 0.22 25);
+  --color-destructive-foreground: oklch(0.99 0 0);
+}
+
+html,
+body {
+  min-height: 100%;
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+::selection {
+  background: color-mix(in oklch, var(--color-primary) 25%, transparent);
+}
+
+/* Subtle grain for SaaS feel */
+.bg-grid {
+  background-image:
+    linear-gradient(
+      to right,
+      color-mix(in oklch, var(--color-border) 60%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in oklch, var(--color-border) 60%, transparent) 1px,
+      transparent 1px
+    );
+  background-size: 32px 32px;
+}
+
+.shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklch, var(--color-muted-foreground) 12%, transparent),
+    transparent
+  );
+  animation: shimmer 1.6s infinite;
+}
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.scrollbar-soft::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.scrollbar-soft::-webkit-scrollbar-thumb {
+  background: color-mix(in oklch, var(--color-muted-foreground) 20%, transparent);
+  border-radius: 999px;
+}
