@@ -355,7 +355,10 @@ function PDFImport() {
             <div className="border-b bg-[var(--color-muted)] px-3 py-2 text-xs text-[var(--color-muted-foreground)]">
               {preview.filename} · {preview.total_pages} page
               {preview.total_pages === 1 ? "" : "s"} · {preview.extracted_terms}{" "}
-              candidate{preview.extracted_terms === 1 ? "" : "s"}
+              candidate{preview.extracted_terms === 1 ? "" : "s"} · via {" "}
+              <span className="font-medium text-[var(--color-foreground)]">
+                {preview.extractor}
+              </span>
             </div>
             <ul className="divide-y">
               {preview.preview.map((r, i) => (

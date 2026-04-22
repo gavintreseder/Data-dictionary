@@ -25,7 +25,7 @@ from app.models.term import (
 from app.schemas.term import ImportPreviewRow, ImportResult, PDFExtraction
 from app.seed.loader import slugify
 from app.services import audit
-from app.services.pdf_extractor import extract_from_pdf_bytes
+from app.services.pdf_extractor import extract_from_pdf_bytes_async
 
 router = APIRouter(prefix="/api", tags=["import-export"])
 
@@ -259,11 +259,12 @@ async def preview_pdf(
     data = await file.read()
     if len(data) > settings.pdf_max_bytes:
         raise HTTPException(status_code=413, detail="PDF too large")
-    terms, total_pages = extract_from_pdf_bytes(data)
+    terms, total_pages, extractor = await extract_from_pdf_bytes_async(data)
     return PDFExtraction(
         filename=file.filename or "upload.pdf",
         total_pages=total_pages,
         extracted_terms=len(terms),
+        extractor=extractor,
         preview=[
             ImportPreviewRow(term=t.term, definition=t.definition, source_slug="pdf")
             for t in terms[:100]
@@ -280,7 +281,7 @@ async def import_pdf(
     if len(data) > settings.pdf_max_bytes:
         raise HTTPException(status_code=413, detail="PDF too large")
 
-    terms, total_pages = extract_from_pdf_bytes(data)
+    terms, total_pages, extractor = await extract_from_pdf_bytes_async(data)
 
     pdf_source = await _get_source(session, "pdf")
     if pdf_source is None:
@@ -319,14 +320,14 @@ async def import_pdf(
             status=ImportStatus.COMPLETE,
             terms_added=added_terms,
             definitions_added=added_defs,
-            detail=f"{total_pages} pages, {len(terms)} extracted",
+            detail=f"{total_pages} pages, {len(terms)} extracted via {extractor}",
             finished_at=datetime.now(timezone.utc),
         )
     )
     await audit.record(
         session,
         AuditKind.IMPORTED,
-        f"PDF import: {file.filename} → +{added_terms} terms, +{added_defs} definitions",
+        f"PDF import: {file.filename} → +{added_terms} terms, +{added_defs} definitions ({extractor})",
     )
     await session.commit()
 
@@ -336,7 +337,7 @@ async def import_pdf(
         terms_added=added_terms,
         definitions_added=added_defs,
         skipped=max(0, len(terms) - added_defs),
-        detail=f"{total_pages} pages scanned",
+        detail=f"{total_pages} pages scanned via {extractor}",
     )
 
 

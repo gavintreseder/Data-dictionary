@@ -33,12 +33,31 @@ SYSTEM_PROMPT = (
 )
 
 
+EXTRACT_SYSTEM_PROMPT = (
+    "You are extracting defined terms from a business document. Identify "
+    "terms that are explicitly defined in the passage: formal definitions, "
+    "acronym expansions, or terminology with clear explanations given in "
+    "the text. Do not invent definitions that aren't there. Return STRICT "
+    "JSON — an array of objects with exactly two fields: `term` (1–6 words) "
+    "and `definition` (1–2 sentences from the passage, lightly cleaned). "
+    "Example: [{\"term\": \"Material Risk\", \"definition\": \"A risk that "
+    "could affect achievement of strategic objectives.\"}]. No preamble, "
+    "no trailing prose, no code fences."
+)
+
+
 @dataclass
 class LLMResult:
     text: str
     model: str
     confidence: float
     sources_used: list[str]
+
+
+@dataclass
+class ExtractedPair:
+    term: str
+    definition: str
 
 
 def _agreement_score(texts: list[str]) -> float:
@@ -239,3 +258,190 @@ async def consolidate(
         confidence=max(0.15, min(0.55, agreement)),
         sources_used=used,
     )
+
+
+# ---------- Term extraction from free-text (used by PDF import) -------------
+
+_CHUNK_CHARS = 6000
+_CHUNK_OVERLAP = 400
+
+
+def _chunk_text(text: str) -> list[str]:
+    """Split on paragraph boundaries up to ~6k chars, with a small overlap.
+
+    Overlap avoids cutting a definition across chunks.
+    """
+    text = text.strip()
+    if len(text) <= _CHUNK_CHARS:
+        return [text] if text else []
+
+    chunks: list[str] = []
+    i = 0
+    n = len(text)
+    while i < n:
+        end = min(n, i + _CHUNK_CHARS)
+        # try to extend to the next paragraph break for a cleaner split
+        if end < n:
+            nl = text.rfind("\n\n", i + int(_CHUNK_CHARS * 0.7), end)
+            if nl != -1:
+                end = nl
+        chunks.append(text[i:end])
+        if end == n:
+            break
+        i = max(end - _CHUNK_OVERLAP, i + 1)
+    return chunks
+
+
+def _extract_json_array(text: str) -> list[dict]:
+    """Pull the first JSON array out of an LLM response, tolerating preamble
+    and code fences."""
+
+    if not text:
+        return []
+    # strip ``` fences
+    fenced = re.search(r"```(?:json)?\s*(\[[\s\S]*?\])\s*```", text)
+    if fenced:
+        text = fenced.group(1)
+    # or first top-level [...]
+    start = text.find("[")
+    end = text.rfind("]")
+    if start == -1 or end == -1 or end <= start:
+        return []
+    candidate = text[start : end + 1]
+    try:
+        data = json.loads(candidate)
+    except json.JSONDecodeError:
+        # try a trailing-comma repair
+        repaired = re.sub(r",(\s*[\]}])", r"\1", candidate)
+        try:
+            data = json.loads(repaired)
+        except json.JSONDecodeError:
+            return []
+    return data if isinstance(data, list) else []
+
+
+async def _call_ollama_extract(user_prompt: str) -> Optional[str]:
+    if not settings.ollama_url:
+        return None
+    url = settings.ollama_url.rstrip("/") + "/api/generate"
+    payload = {
+        "model": settings.ollama_model,
+        "system": EXTRACT_SYSTEM_PROMPT,
+        "prompt": user_prompt,
+        "stream": False,
+        "format": "json",
+        "options": {"temperature": 0.1, "num_predict": 1400},
+    }
+    try:
+        async with httpx.AsyncClient(timeout=settings.llm_timeout * 2) as client:
+            resp = await client.post(url, json=payload)
+    except httpx.HTTPError as exc:
+        logger.warning("ollama extract failed: %s", exc)
+        return None
+    if resp.status_code != 200:
+        logger.warning("ollama extract returned %s: %s", resp.status_code, resp.text[:200])
+        return None
+    try:
+        data = resp.json()
+    except ValueError:
+        return None
+    return (data.get("response") or "").strip()
+
+
+async def _call_hf_extract(user_prompt: str) -> Optional[str]:
+    if not settings.hf_api_token:
+        return None
+    url = f"https://api-inference.huggingface.co/models/{settings.hf_model}"
+    headers = {
+        "Authorization": f"Bearer {settings.hf_api_token}",
+        "Content-Type": "application/json",
+    }
+    full_prompt = (
+        f"<s>[INST] {EXTRACT_SYSTEM_PROMPT}\n\n{user_prompt} [/INST]"
+    )
+    payload = {
+        "inputs": full_prompt,
+        "parameters": {
+            "max_new_tokens": 1200,
+            "temperature": 0.1,
+            "return_full_text": False,
+        },
+        "options": {"wait_for_model": True},
+    }
+    try:
+        async with httpx.AsyncClient(timeout=settings.llm_timeout * 2) as client:
+            resp = await client.post(url, json=payload, headers=headers)
+    except httpx.HTTPError as exc:
+        logger.warning("hf extract failed: %s", exc)
+        return None
+    if resp.status_code != 200:
+        logger.warning("hf extract returned %s: %s", resp.status_code, resp.text[:200])
+        return None
+    try:
+        data = resp.json()
+    except ValueError:
+        return None
+    if isinstance(data, list) and data:
+        return (data[0].get("generated_text") or "").strip()
+    if isinstance(data, dict):
+        return (data.get("generated_text") or "").strip()
+    return None
+
+
+def _dedupe_pairs(pairs: list[ExtractedPair]) -> list[ExtractedPair]:
+    seen: dict[str, ExtractedPair] = {}
+    for p in pairs:
+        key = p.term.strip().lower()
+        if not key or len(key) > 80:
+            continue
+        if len(p.definition.strip()) < 8:
+            continue
+        if key in seen:
+            # keep the longer definition
+            if len(p.definition) > len(seen[key].definition):
+                seen[key] = p
+        else:
+            seen[key] = p
+    return list(seen.values())
+
+
+async def extract_terms(text: str) -> tuple[list[ExtractedPair], str]:
+    """Extract (term, definition) pairs from free text using an LLM.
+
+    Returns (pairs, model_label). When no LLM is configured, returns
+    ([], "disabled") so the caller can fall back to a regex pass.
+    """
+
+    if not llm_enabled() or not text.strip():
+        return ([], "disabled")
+
+    chunks = _chunk_text(text)
+    all_pairs: list[ExtractedPair] = []
+    model_label = ""
+
+    for chunk in chunks:
+        user_prompt = (
+            "Extract every defined term and its definition from the passage "
+            "below. Return JSON only.\n\nPassage:\n" + chunk
+        )
+
+        raw = await _call_ollama_extract(user_prompt)
+        if raw:
+            model_label = f"ollama:{settings.ollama_model}"
+        else:
+            raw = await _call_hf_extract(user_prompt)
+            if raw:
+                model_label = f"hf:{settings.hf_model}"
+
+        if not raw:
+            continue
+
+        for item in _extract_json_array(raw):
+            if not isinstance(item, dict):
+                continue
+            term = str(item.get("term") or item.get("name") or "").strip()
+            defn = str(item.get("definition") or item.get("def") or "").strip()
+            if term and defn:
+                all_pairs.append(ExtractedPair(term=term, definition=defn))
+
+    return (_dedupe_pairs(all_pairs), model_label or "llm")

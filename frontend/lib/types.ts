@@ -165,6 +165,7 @@ export interface PDFExtraction {
   filename: string;
   total_pages: number;
   extracted_terms: number;
+  extractor: string;
   preview: Array<{
     term: string;
     definition?: string | null;

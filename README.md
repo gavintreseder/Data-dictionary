@@ -98,6 +98,33 @@ All optional; sensible defaults are provided.
 | `LOOKUP_CACHE_TTL`| Seconds to cache per-source lookups            | 43200 (12h)                          |
 | `PDF_MAX_BYTES`   | Max PDF upload size                            | 10 MiB                               |
 
+### Turning on the LLM (free, via Hugging Face)
+
+The app uses the LLM for **two** things: (1) consolidating a "consensus"
+definition on the term page, and (2) extracting defined terms from PDFs.
+Both features fall back to non-LLM paths when no token is configured
+(heuristic consensus and regex extraction respectively), but the LLM is
+materially better — especially for PDF extraction.
+
+1. Create a free Hugging Face account at https://huggingface.co
+2. Generate a **read** token at https://huggingface.co/settings/tokens
+   (any token with the default "Read" scope is enough — no billing needed
+   for the free Inference API tier)
+3. On Railway: **Variables → New Variable** → `HF_API_TOKEN = hf_xxxxx`,
+   then redeploy. Locally: add `HF_API_TOKEN=hf_xxxxx` to `backend/.env`
+   or export it before starting uvicorn.
+4. Optional: override the model with `HF_MODEL`. Good options:
+   - `mistralai/Mistral-7B-Instruct-v0.3` (default, balanced)
+   - `meta-llama/Llama-3.2-3B-Instruct` (faster, smaller)
+   - `HuggingFaceH4/zephyr-7b-beta` (good at following structured output)
+
+Verify it's on by hitting `GET /api/system` — `llm.enabled` should be
+`true` and `llm.huggingface` should be `true`. The dashboard's yellow
+"heuristic mode" banner will also disappear.
+
+Rate limits on the free HF Inference API are modest (~300 req/hour) —
+fine for a demo, not a production workload.
+
 ## Deploy to Railway
 
 1. Push this repo to GitHub
