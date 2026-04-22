@@ -10,7 +10,8 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.config import settings
 from app.database import init_db
-from app.routers import lookup, sources, terms
+from app.routers import audit as audit_router
+from app.routers import import_export, lookup, refine, sources, system, tags, terms
 from app.seed.loader import seed_database
 
 logging.basicConfig(level=logging.INFO)
@@ -29,7 +30,7 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
 
 app = FastAPI(
     title=settings.app_name,
-    version="0.1.0",
+    version="0.2.0",
     lifespan=lifespan,
 )
 
@@ -43,7 +44,12 @@ app.add_middleware(
 
 app.include_router(terms.router)
 app.include_router(lookup.router)
+app.include_router(refine.router)
 app.include_router(sources.router)
+app.include_router(tags.router)
+app.include_router(audit_router.router)
+app.include_router(import_export.router)
+app.include_router(system.router)
 
 
 @app.get("/api/health", tags=["health"])
@@ -70,9 +76,7 @@ def _mount_static() -> None:
             index = STATIC_DIR / "index.html"
             if index.exists():
                 return FileResponse(index)
-        return JSONResponse(
-            {"detail": exc.detail}, status_code=exc.status_code
-        )
+        return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
 
     @app.get("/{full_path:path}", include_in_schema=False)
     async def spa_catchall(full_path: str):
@@ -84,6 +88,20 @@ def _mount_static() -> None:
         html_candidate = STATIC_DIR / f"{full_path}.html"
         if html_candidate.is_file():
             return FileResponse(html_candidate)
+        # /t/<slug> fallback: serve any prerendered share page so the client
+        # bundle can re-hydrate and fetch the correct term by slug from the URL.
+        if full_path.startswith("t/"):
+            first_share = next((STATIC_DIR / "t").glob("*.html"), None) \
+                if (STATIC_DIR / "t").exists() else None
+            if first_share:
+                return FileResponse(first_share)
+        # /terms/<id> fallback: same trick for runtime term IDs outside the
+        # prerendered range.
+        if full_path.startswith("terms/") and full_path.count("/") == 1:
+            first_term = next((STATIC_DIR / "terms").glob("*.html"), None) \
+                if (STATIC_DIR / "terms").exists() else None
+            if first_term:
+                return FileResponse(first_term)
         index = STATIC_DIR / "index.html"
         if index.exists():
             return FileResponse(index)

@@ -1,6 +1,6 @@
 {
   "name": "data-dictionary-frontend",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
@@ -12,17 +12,21 @@
     "@tanstack/react-query": "^5.62.11",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
     "framer-motion": "^11.15.0",
     "lucide-react": "^0.469.0",
     "next": "15.1.4",
     "next-themes": "^0.4.4",
+    "papaparse": "^5.4.1",
     "react": "19.0.0",
     "react-dom": "19.0.0",
+    "sonner": "^1.7.1",
     "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^22.10.5",
+    "@types/papaparse": "^5.3.15",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
     "postcss": "^8.4.49",

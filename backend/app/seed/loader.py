@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from app.database import AsyncSessionLocal
-from app.models.term import Definition, Source, SourceType, Term
+from app.models.term import Definition, Source, SourceType, Tag, Term, TermTag
 
 SEED_PATH = Path(__file__).parent / "sample_terms.json"
 
@@ -36,8 +36,26 @@ async def _load_sources(session: AsyncSession, data: dict) -> dict[str, Source]:
     return by_slug
 
 
+async def _load_tags(session: AsyncSession, data: dict) -> dict[str, Tag]:
+    by_name: dict[str, Tag] = {}
+    for name in data.get("tags", []) or []:
+        slug = slugify(name)
+        existing = (
+            await session.execute(select(Tag).where(Tag.slug == slug))
+        ).scalar_one_or_none()
+        if existing is None:
+            existing = Tag(name=name, slug=slug)
+            session.add(existing)
+            await session.flush()
+        by_name[name.lower()] = existing
+    return by_name
+
+
 async def _load_terms(
-    session: AsyncSession, data: dict, sources: dict[str, Source]
+    session: AsyncSession,
+    data: dict,
+    sources: dict[str, Source],
+    tags_by_name: dict[str, Tag],
 ) -> int:
     added = 0
     for entry in data.get("terms", []):
@@ -55,6 +73,7 @@ async def _load_terms(
         )
         session.add(term)
         await session.flush()
+
         for defn in entry.get("definitions", []):
             source_slug = defn.get("source", "business")
             source = sources.get(source_slug)
@@ -69,6 +88,16 @@ async def _load_terms(
                     example=defn.get("example"),
                 )
             )
+
+        for tag_name in entry.get("tags", []) or []:
+            tag = tags_by_name.get(tag_name.lower())
+            if tag is None:
+                tag = Tag(name=tag_name, slug=slugify(tag_name))
+                session.add(tag)
+                await session.flush()
+                tags_by_name[tag_name.lower()] = tag
+            session.add(TermTag(term_id=term.id, tag_id=tag.id))
+
         added += 1
     return added
 
@@ -79,6 +108,32 @@ async def seed_database() -> int:
     data = json.loads(SEED_PATH.read_text())
     async with AsyncSessionLocal() as session:
         sources = await _load_sources(session, data)
-        added = await _load_terms(session, data, sources)
+        tags = await _load_tags(session, data)
+        added = await _load_terms(session, data, sources, tags)
         await session.commit()
         return added
+
+
+async def reset_database() -> int:
+    """Wipe all term-related data and re-seed. Used by demo mode."""
+    from sqlalchemy import delete
+
+    from app.models.term import (
+        AuditEvent,
+        Definition,
+        LLMRefinement,
+        Tag,
+        Term,
+        TermTag,
+    )
+
+    async with AsyncSessionLocal() as session:
+        await session.execute(delete(AuditEvent))
+        await session.execute(delete(LLMRefinement))
+        await session.execute(delete(Definition))
+        await session.execute(delete(TermTag))
+        await session.execute(delete(Tag))
+        await session.execute(delete(Term))
+        await session.commit()
+
+    return await seed_database()

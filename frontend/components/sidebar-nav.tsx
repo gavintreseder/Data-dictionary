@@ -2,10 +2,14 @@
 
 import {
   BookText,
+  Command as CmdIcon,
+  Download,
   LayoutDashboard,
   Menu,
   Search,
   Sparkles,
+  Tags,
+  Upload,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -13,12 +17,15 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
-  { href: "/", label: "Dashboard", Icon: LayoutDashboard },
-  { href: "/terms", label: "Terms", Icon: BookText },
+  { href: "/", label: "Dashboard", Icon: LayoutDashboard, tour: "dashboard-link" },
+  { href: "/terms", label: "Terms", Icon: BookText, tour: "terms-link" },
+  { href: "/tags", label: "Tags", Icon: Tags },
   { href: "/search", label: "Search", Icon: Search },
+  { href: "/import", label: "Import", Icon: Upload, tour: "import-link" },
 ];
 
 export function SidebarNav() {
@@ -30,7 +37,6 @@ export function SidebarNav() {
 
   return (
     <>
-      {/* Mobile toggle */}
       <Button
         variant="ghost"
         size="icon"
@@ -54,17 +60,18 @@ export function SidebarNav() {
           <div className="flex flex-col leading-tight">
             <span className="text-sm font-semibold">Data Dictionary</span>
             <span className="text-xs text-[var(--color-muted-foreground)]">
-              Phase 1 · demo
+              Demo build · v0.2
             </span>
           </div>
         </div>
 
         <nav className="space-y-1">
-          {NAV_ITEMS.map(({ href, label, Icon }) => (
+          {NAV_ITEMS.map(({ href, label, Icon, tour }) => (
             <Link
               key={href}
               href={href}
               onClick={() => setOpen(false)}
+              data-tour={tour}
               className={cn(
                 "group flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 isActive(href)
@@ -76,15 +83,36 @@ export function SidebarNav() {
               {label}
             </Link>
           ))}
+          <a
+            href={api.exportUrl("csv")}
+            className="group flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)] hover:text-[var(--color-foreground)]"
+          >
+            <Download className="h-4 w-4" />
+            Export CSV
+          </a>
         </nav>
 
-        <div className="mt-8 rounded-xl border border-dashed p-3 text-xs text-[var(--color-muted-foreground)]">
-          <p className="mb-1 font-medium text-[var(--color-foreground)]">
-            Demo mode
-          </p>
-          <p>
-            Data persists in a local SQLite file. Restart the container to reset.
-          </p>
+        <div className="mt-8 space-y-3 rounded-xl border border-dashed p-3 text-xs text-[var(--color-muted-foreground)]">
+          <div className="flex items-center gap-2 text-[var(--color-foreground)]">
+            <CmdIcon className="h-3.5 w-3.5" />
+            <span className="font-medium">Tips</span>
+          </div>
+          <ul className="space-y-1">
+            <li>
+              <kbd className="rounded border px-1 py-0.5 text-[10px]">⌘K</kbd>{" "}
+              opens the command palette
+            </li>
+            <li>
+              <kbd className="rounded border px-1 py-0.5 text-[10px]">/</kbd>{" "}
+              focuses search
+            </li>
+            <li>
+              <kbd className="rounded border px-1 py-0.5 text-[10px]">g d</kbd>{" "}
+              /{" "}
+              <kbd className="rounded border px-1 py-0.5 text-[10px]">g t</kbd>{" "}
+              jumps between pages
+            </li>
+          </ul>
         </div>
       </aside>
     </>

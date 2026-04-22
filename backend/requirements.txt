@@ -7,3 +7,5 @@ pydantic==2.10.4
 pydantic-settings==2.7.0
 httpx==0.28.1
 python-multipart==0.0.20
+pymupdf4llm==0.0.17
+pymupdf==1.25.1

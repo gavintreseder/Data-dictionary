@@ -4,9 +4,10 @@ from sqlalchemy.orm import selectinload
 from sqlmodel import select
 
 from app.database import get_session
-from app.models.term import Definition, Source, Term
+from app.models.term import AuditKind, Definition, Source, Term
 from app.schemas.term import DefinitionRead, LookupResult
 from app.seed.loader import slugify
+from app.services import audit
 from app.services.dictionary_service import lookup_word
 
 router = APIRouter(prefix="/api/lookup", tags=["lookup"])
@@ -25,10 +26,12 @@ async def lookup(
     term = (
         await session.execute(select(Term).where(Term.slug == slug))
     ).scalar_one_or_none()
+    newly_created = False
     if term is None:
         term = Term(term=word.title(), slug=slug, summary=None)
         session.add(term)
         await session.flush()
+        newly_created = True
 
     results = await lookup_word(word)
     added = 0
@@ -53,7 +56,7 @@ async def lookup(
             ).scalars().all()
         )
 
-        for extern in defs[:5]:  # cap per source for sanity
+        for extern in defs[:5]:
             if extern.text in existing_texts:
                 continue
             session.add(
@@ -68,6 +71,22 @@ async def lookup(
             )
             existing_texts.add(extern.text)
             added += 1
+
+    if newly_created:
+        await audit.record(
+            session,
+            AuditKind.CREATED,
+            f'Created "{term.term}" via lookup',
+            term_id=term.id,
+        )
+    if added:
+        await audit.record(
+            session,
+            AuditKind.DEFINITION_ADDED,
+            f"Added {added} definition(s) from "
+            + ", ".join(slug for slug, defs in results.items() if defs),
+            term_id=term.id,
+        )
 
     await session.commit()
 

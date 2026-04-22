@@ -1,21 +1,31 @@
 from app.models.term import (
+    AuditEvent,
+    AuditKind,
     Definition,
     FlagStatus,
     ImportJob,
     ImportStatus,
+    IndustryContext,
     LLMRefinement,
     Source,
     SourceType,
+    Tag,
     Term,
+    TermTag,
 )
 
 __all__ = [
+    "AuditEvent",
+    "AuditKind",
     "Definition",
     "FlagStatus",
     "ImportJob",
     "ImportStatus",
+    "IndustryContext",
     "LLMRefinement",
     "Source",
     "SourceType",
+    "Tag",
     "Term",
+    "TermTag",
 ]
