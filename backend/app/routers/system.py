@@ -8,20 +8,25 @@ router = APIRouter(prefix="/api", tags=["system"])
 
 @router.get("/system")
 async def system_info() -> dict:
+    # Preference order matches llm_service._invoke: groq → ollama → hf
+    if settings.groq_api_key:
+        active = f"groq:{settings.groq_model}"
+    elif settings.ollama_url:
+        active = f"ollama:{settings.ollama_model}"
+    elif settings.hf_api_token:
+        active = f"hf:{settings.hf_model}"
+    else:
+        active = "heuristic"
+
     return {
         "app": settings.app_name,
         "environment": settings.environment,
         "llm": {
             "enabled": llm_enabled(),
+            "groq": bool(settings.groq_api_key),
             "ollama": bool(settings.ollama_url),
             "huggingface": bool(settings.hf_api_token),
-            "model": (
-                settings.ollama_model
-                if settings.ollama_url
-                else settings.hf_model
-                if settings.hf_api_token
-                else "heuristic"
-            ),
+            "model": active,
         },
     }
 

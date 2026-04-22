@@ -360,6 +360,20 @@ function PDFImport() {
                 {preview.extractor}
               </span>
             </div>
+            {preview.llm_errors && preview.llm_errors.length > 0 ? (
+              <div className="border-b border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+                <p className="mb-1 font-medium">
+                  LLM extraction failed — fell back to regex. Cause:
+                </p>
+                <ul className="list-disc pl-4 font-mono text-[10px]">
+                  {preview.llm_errors.slice(0, 3).map((e, i) => (
+                    <li key={i} className="break-all">
+                      {e}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
             <ul className="divide-y">
               {preview.preview.map((r, i) => (
                 <li key={i} className="px-3 py-2 text-sm">

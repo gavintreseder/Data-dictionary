@@ -259,12 +259,13 @@ async def preview_pdf(
     data = await file.read()
     if len(data) > settings.pdf_max_bytes:
         raise HTTPException(status_code=413, detail="PDF too large")
-    terms, total_pages, extractor = await extract_from_pdf_bytes_async(data)
+    terms, total_pages, extractor, llm_errors = await extract_from_pdf_bytes_async(data)
     return PDFExtraction(
         filename=file.filename or "upload.pdf",
         total_pages=total_pages,
         extracted_terms=len(terms),
         extractor=extractor,
+        llm_errors=llm_errors[:3],  # cap for size
         preview=[
             ImportPreviewRow(term=t.term, definition=t.definition, source_slug="pdf")
             for t in terms[:100]
@@ -281,7 +282,7 @@ async def import_pdf(
     if len(data) > settings.pdf_max_bytes:
         raise HTTPException(status_code=413, detail="PDF too large")
 
-    terms, total_pages, extractor = await extract_from_pdf_bytes_async(data)
+    terms, total_pages, extractor, _ = await extract_from_pdf_bytes_async(data)
 
     pdf_source = await _get_source(session, "pdf")
     if pdf_source is None:

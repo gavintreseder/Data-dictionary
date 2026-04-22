@@ -91,39 +91,73 @@ All optional; sensible defaults are provided.
 | Variable          | What                                           | Default                              |
 | ----------------- | ---------------------------------------------- | ------------------------------------ |
 | `DATABASE_URL`    | Async SQLAlchemy URL                           | `sqlite+aiosqlite:///./data/dictionary.db` |
+| `GROQ_API_KEY`    | Enables Groq (recommended — free + fast)       | — (heuristic fallback) |
+| `GROQ_MODEL`      | Groq model                                     | `llama-3.1-8b-instant`               |
 | `OLLAMA_URL`      | Enables Ollama LLM (e.g. `http://localhost:11434`) | — (heuristic fallback) |
 | `OLLAMA_MODEL`    | Model name for Ollama                          | `llama3.2:3b`                        |
-| `HF_API_TOKEN`    | Enables HuggingFace Inference API              | — (heuristic fallback)               |
+| `HF_API_TOKEN`    | Enables HuggingFace Inference Providers        | — (heuristic fallback)               |
 | `HF_MODEL`        | Model for HF                                   | `mistralai/Mistral-7B-Instruct-v0.3` |
+| `HF_PROVIDER`     | HF provider route                              | `hf-inference`                       |
 | `LOOKUP_CACHE_TTL`| Seconds to cache per-source lookups            | 43200 (12h)                          |
 | `PDF_MAX_BYTES`   | Max PDF upload size                            | 10 MiB                               |
 
-### Turning on the LLM (free, via Hugging Face)
+### Turning on the LLM (free)
 
-The app uses the LLM for **two** things: (1) consolidating a "consensus"
-definition on the term page, and (2) extracting defined terms from PDFs.
-Both features fall back to non-LLM paths when no token is configured
-(heuristic consensus and regex extraction respectively), but the LLM is
-materially better — especially for PDF extraction.
+The LLM is used for two features:
+1. **Refine box** on the term page — consolidates a consensus definition across sources.
+2. **PDF import** — extracts defined terms contextually (much better than the regex-only fallback).
 
-1. Create a free Hugging Face account at https://huggingface.co
-2. Generate a **read** token at https://huggingface.co/settings/tokens
-   (any token with the default "Read" scope is enough — no billing needed
-   for the free Inference API tier)
-3. On Railway: **Variables → New Variable** → `HF_API_TOKEN = hf_xxxxx`,
-   then redeploy. Locally: add `HF_API_TOKEN=hf_xxxxx` to `backend/.env`
-   or export it before starting uvicorn.
-4. Optional: override the model with `HF_MODEL`. Good options:
-   - `mistralai/Mistral-7B-Instruct-v0.3` (default, balanced)
-   - `meta-llama/Llama-3.2-3B-Instruct` (faster, smaller)
-   - `HuggingFaceH4/zephyr-7b-beta` (good at following structured output)
+Both features fall back gracefully when no LLM is configured
+(heuristic consensus and regex extraction respectively), so nothing
+breaks — but the LLM is materially better, especially for PDFs.
 
-Verify it's on by hitting `GET /api/system` — `llm.enabled` should be
-`true` and `llm.huggingface` should be `true`. The dashboard's yellow
-"heuristic mode" banner will also disappear.
+**Three ways to plug one in, in order of "how easy is this":**
 
-Rate limits on the free HF Inference API are modest (~300 req/hour) —
-fine for a demo, not a production workload.
+#### 1. Groq (recommended)
+
+Fastest to set up, generous free tier (~30 req/min), sub-second responses.
+
+1. Sign up at https://console.groq.com (GitHub or Google login, no card)
+2. **API Keys → Create API Key** → copy `gsk_...`
+3. On Railway: **Variables → New Variable** → `GROQ_API_KEY = gsk_...`
+4. Redeploy. `GET /api/system` should show `llm.groq = true` and
+   `model = "groq:llama-3.1-8b-instant"`.
+
+Override model with `GROQ_MODEL`. Good picks:
+- `llama-3.1-8b-instant` (default, fast)
+- `llama-3.3-70b-versatile` (higher quality, a bit slower)
+- `mixtral-8x7b-32768` (big context window)
+
+#### 2. Hugging Face Inference Providers
+
+If you already have an HF account. Uses the newer
+`router.huggingface.co` chat-completions endpoint (NOT the deprecated
+`api-inference.huggingface.co` one — that's why earlier HF tokens may
+have silently failed).
+
+1. Sign in at https://huggingface.co
+2. Generate a read token at https://huggingface.co/settings/tokens
+3. Set `HF_API_TOKEN=hf_...` on Railway, redeploy.
+4. Optional: `HF_MODEL` and `HF_PROVIDER`. Default provider is
+   `hf-inference` (the free serverless route). You can also point it at
+   `together`, `fireworks-ai`, etc. if you have credits with those.
+
+If HF extraction returns 0 results but Groq would be trivial to add,
+the PDF import UI will say "LLM extraction failed — fell back to
+regex" with the exact HTTP error, so you can see whether it's an auth
+issue, a rate limit, or a deprecated model.
+
+#### 3. Ollama (self-hosted, local)
+
+Useful if you want zero external dependencies and already run Ollama
+somewhere reachable from the container.
+
+1. `ollama pull llama3.2:3b`
+2. Set `OLLAMA_URL=http://host.docker.internal:11434` (or wherever
+   Ollama is).
+
+**Priority order:** if multiple are configured, the code tries
+**Groq → Ollama → HF** per call and stops at the first success.
 
 ## Deploy to Railway
 

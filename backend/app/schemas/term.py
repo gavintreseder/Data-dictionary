@@ -188,4 +188,5 @@ class PDFExtraction(BaseModel):
     total_pages: int
     extracted_terms: int
     extractor: str = "regex"  # "regex" | "llm (<model>)" | "llm+regex (<model>)"
+    llm_errors: list[str] = []
     preview: list[ImportPreviewRow]

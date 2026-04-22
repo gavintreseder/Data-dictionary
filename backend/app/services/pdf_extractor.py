@@ -126,18 +126,22 @@ def _pdf_to_markdown(data: bytes) -> tuple[str, int]:
     return (md, total_pages)
 
 
-async def extract_from_pdf_bytes_async(data: bytes) -> tuple[list[ExtractedTerm], int, str]:
-    """Returns (terms, total_pages, extractor_label).
+async def extract_from_pdf_bytes_async(
+    data: bytes,
+) -> tuple[list[ExtractedTerm], int, str, list[str]]:
+    """Returns (terms, total_pages, extractor_label, llm_errors).
 
-    extractor_label is "regex", "llm:<model>", or "llm+regex".
+    extractor_label is "regex", "llm (<model>)", "llm+regex (<model>)", or
+    "regex (llm failed)". llm_errors is non-empty when an LLM was configured
+    but returned nothing useful — surfaced so the UI can explain why.
     """
 
     md, total_pages = _pdf_to_markdown(data)
     if not md:
-        return ([], total_pages, "regex")
+        return ([], total_pages, "regex", [])
 
     # LLM pass (may be disabled)
-    llm_pairs, llm_label = await llm_extract_terms(md)
+    llm_pairs, llm_label, llm_errors = await llm_extract_terms(md)
     llm_terms = [
         ExtractedTerm(term=p.term, definition=p.definition, source=f"llm:{llm_label}")
         for p in llm_pairs
@@ -152,10 +156,13 @@ async def extract_from_pdf_bytes_async(data: bytes) -> tuple[list[ExtractedTerm]
         label = f"llm+regex ({llm_label})"
     elif llm_terms:
         label = f"llm ({llm_label})"
+    elif llm_label != "disabled" and llm_errors:
+        # LLM was configured but every call failed
+        label = "regex (llm failed)"
     else:
         label = "regex"
 
-    return (combined, total_pages, label)
+    return (combined, total_pages, label, llm_errors)
 
 
 # Sync shim retained for any legacy callers; prefers the async path.
