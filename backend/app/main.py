@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -18,13 +19,22 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+async def _background_seed() -> None:
+    try:
+        added = await seed_database()
+        if added:
+            logger.info("Seeded %s term(s)", added)
+    except Exception:
+        logger.exception("Background seed failed")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # noqa: ARG001
     await init_db()
     if settings.seed_on_startup:
-        added = await seed_database()
-        if added:
-            logger.info("Seeded %s term(s)", added)
+        # Seed in the background so /api/health responds immediately —
+        # avoids Railway's 30s healthcheck window timing out on cold start.
+        asyncio.create_task(_background_seed())
     yield
 
 
