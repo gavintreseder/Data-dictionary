@@ -57,6 +57,18 @@ async def health() -> dict:
     return {"status": "ok", "app": settings.app_name}
 
 
+@app.get("/api", include_in_schema=False)
+@app.get("/api/", include_in_schema=False)
+async def api_root() -> dict:
+    return {
+        "app": settings.app_name,
+        "version": app.version,
+        "docs": "/docs",
+        "openapi": "/openapi.json",
+        "health": "/api/health",
+    }
+
+
 STATIC_DIR = Path(settings.static_dir)
 
 
