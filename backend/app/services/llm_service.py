@@ -73,6 +73,7 @@ class CallOutcome:
     text: Optional[str] = None
     model: str = ""
     errors: list[str] = field(default_factory=list)
+    skipped: set[str] = field(default_factory=set)
 
 
 def _agreement_score(texts: list[str]) -> float:
@@ -257,17 +258,30 @@ async def _call_hf(system: str, user: str, *, json_mode: bool, max_tokens: int) 
 
 
 async def _invoke(
-    *, system: str, user: str, json_mode: bool, max_tokens: int
+    *,
+    system: str,
+    user: str,
+    json_mode: bool,
+    max_tokens: int,
+    skip: Optional[set[str]] = None,
 ) -> CallOutcome:
-    """Try Groq → Ollama → HF in order. Record failures as we go."""
+    """Try Groq → Ollama → HF in order. Record failures as we go.
+
+    `skip` lets callers blacklist providers that already returned a fatal
+    error for this batch (e.g. a quota 429) so we don't waste time and
+    tokens retrying them on every subsequent chunk.
+    """
 
     outcome = CallOutcome()
+    skip = skip or set()
 
     for label, model, caller in (
         ("groq", settings.groq_model, _call_groq),
         ("ollama", settings.ollama_model, _call_ollama),
         ("hf", settings.hf_model, _call_hf),
     ):
+        if label in skip:
+            continue
         text, err = await caller(
             system, user, json_mode=json_mode, max_tokens=max_tokens
         )
@@ -277,7 +291,12 @@ async def _invoke(
             return outcome
         if err:
             outcome.errors.append(err)
+            # If it was a quota / rate-limit, blacklist this provider for the
+            # remainder of the batch so the caller can stop retrying it.
+            if "429" in err or "rate" in err.lower() or "quota" in err.lower() or "token" in err.lower():
+                skip.add(label)
 
+    outcome.skipped = skip
     return outcome
 
 
@@ -369,8 +388,8 @@ async def consolidate(
 # ---- Term extraction for PDFs ----------------------------------------------
 
 
-_CHUNK_CHARS = 6000
-_CHUNK_OVERLAP = 400
+_CHUNK_CHARS = 10000
+_CHUNK_OVERLAP = 500
 
 
 def _chunk_text(text: str) -> list[str]:
@@ -472,6 +491,8 @@ async def extract_terms(
     all_pairs: list[ExtractedPair] = []
     model_label = ""
     all_errors: list[str] = []
+    # Providers blacklisted for the rest of this batch (e.g. after a 429)
+    skip: set[str] = set()
 
     for idx, chunk in enumerate(chunks):
         user_prompt = (
@@ -484,11 +505,17 @@ async def extract_terms(
             system=EXTRACT_SYSTEM_PROMPT,
             user=user_prompt,
             json_mode=True,
-            max_tokens=1400,
+            max_tokens=800,
+            skip=skip,
         )
         if outcome.errors:
             all_errors.extend(outcome.errors)
+        # carry forward any providers that rate-limited
+        skip |= outcome.skipped
         if not outcome.text:
+            # If every backend is now skipped we're done — no point continuing.
+            if skip and all(p in skip for p in ("groq", "ollama", "hf")):
+                break
             continue
 
         model_label = outcome.model

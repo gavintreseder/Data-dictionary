@@ -159,6 +159,33 @@ somewhere reachable from the container.
 **Priority order:** if multiple are configured, the code tries
 **Groq → Ollama → HF** per call and stops at the first success.
 
+### Surviving Groq's free tier rate limits
+
+Groq's free tier imposes a daily token budget (roughly 100k–200k tokens/day
+depending on the model). A single 20-page PDF through the LLM extractor
+is ~10k tokens. That means you can run a lot of small imports before
+hitting the wall, but one or two large policy documents can burn the
+budget.
+
+When it runs out you'll see:
+
+> LLM extraction failed — fell back to regex. Cause:
+> `groq:... HTTP 429: {"error":{"message":"Rate limit reached ..."}}`
+
+Three things help:
+
+1. **Set `HF_API_TOKEN` as well.** When Groq returns 429, the code
+   automatically blacklists Groq for the rest of that PDF and falls
+   through to HF for the remaining chunks. No code change needed —
+   just a second env var.
+2. **Switch models on Groq.** `llama-3.1-8b-instant` has the highest
+   free budget; `llama-3.3-70b-versatile` is higher quality but much
+   tighter on tokens. Set `GROQ_MODEL=llama-3.1-8b-instant` if you've
+   been using the 70b.
+3. **Split big PDFs.** The chunker already processes long PDFs in
+   ~10k-char windows with deduplication — but if you routinely import
+   50+ page documents you'll want a paid tier or a self-hosted Ollama.
+
 ## Deploy to Railway
 
 1. Push this repo to GitHub
