@@ -1,6 +1,11 @@
 "use client";
 
-import { ChevronRight, Code as CodeIcon, Sparkles, Wrench } from "lucide-react";
+import {
+  ChevronRight,
+  Code as CodeIcon,
+  Sparkles,
+  Wrench,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { RolePill } from "@/components/build-log/role-pill";
@@ -8,13 +13,12 @@ import { cn } from "@/lib/utils";
 import {
   type BuildLog,
   type BuildMessage,
-  type ToolCall,
-  messageToolCount,
+  type MessageBlock,
+  type ToolBlock,
+  toolBlockCount,
   totalToolCalls,
 } from "@/lib/build-log";
 import type { Depth, RoleFilter } from "@/app/behind-the-scenes/page";
-
-type Section = "thinking" | "doing";
 
 const DEPTH_RANK: Record<Depth, number> = {
   summary: 1,
@@ -38,14 +42,12 @@ export function FinderView({
     log.sessions[0]?.id
   );
   const [messageId, setMessageId] = useState<string | undefined>();
-  const [section, setSection] = useState<Section | undefined>();
-  const [toolIdx, setToolIdx] = useState<number | undefined>();
+  const [blockIdx, setBlockIdx] = useState<number | undefined>();
 
   const session = useMemo(
     () => log.sessions.find((s) => s.id === sessionId),
     [log, sessionId]
   );
-
   const visibleMessages = useMemo(
     () =>
       session?.messages.filter(
@@ -53,17 +55,30 @@ export function FinderView({
       ) ?? [],
     [session, roleFilter]
   );
-
   const message = useMemo(
     () => visibleMessages.find((m) => m.id === messageId),
     [visibleMessages, messageId]
   );
 
-  const tool: ToolCall | undefined =
-    message && toolIdx !== undefined ? message.tool_calls?.[toolIdx] : undefined;
+  const visibleBlocks = useMemo<
+    Array<{ block: MessageBlock; origIdx: number }>
+  >(() => {
+    if (!message?.blocks) return [];
+    if (rank <= 1) return [];
+    return message.blocks
+      .map((block, origIdx) => ({ block, origIdx }))
+      .filter(({ block }) => rank >= 3 || block.type === "thinking");
+  }, [message, rank]);
 
-  // Snap message selection back to the first visible message if the current
-  // one is filtered out.
+  const block = useMemo(
+    () =>
+      blockIdx !== undefined
+        ? visibleBlocks.find((b) => b.origIdx === blockIdx)?.block
+        : undefined,
+    [visibleBlocks, blockIdx]
+  );
+
+  // Snap message to first visible when filter/session changes
   useEffect(() => {
     if (!visibleMessages.length) {
       setMessageId(undefined);
@@ -72,36 +87,21 @@ export function FinderView({
     if (!message) setMessageId(visibleMessages[0].id);
   }, [visibleMessages, message]);
 
-  // Auto-drill to the depth level when the global filter changes.
+  // Reset block selection when message changes
   useEffect(() => {
-    if (!message) return;
-    if (rank >= 4 && message.tool_calls?.length) {
-      setSection("doing");
-      setToolIdx(0);
-    } else if (rank >= 3 && message.tool_calls?.length) {
-      setSection("doing");
-      setToolIdx(undefined);
-    } else if (rank >= 2 && message.content) {
-      setSection("thinking");
-      setToolIdx(undefined);
-    } else {
-      setSection(undefined);
-      setToolIdx(undefined);
+    setBlockIdx(undefined);
+  }, [messageId]);
+
+  // Auto-drill: if depth === code, auto-select first tool block
+  useEffect(() => {
+    if (rank >= 4 && message?.blocks) {
+      const firstTool = message.blocks.findIndex((b) => b.type === "tool");
+      if (firstTool >= 0) setBlockIdx(firstTool);
     }
   }, [rank, message]);
 
-  // When the user picks a new message, snap section back to whatever the
-  // current depth implies.
-  useEffect(() => {
-    setToolIdx(undefined);
-  }, [messageId]);
-
-  const hasThinking = !!message?.content;
-  const hasDoing = !!message?.tool_calls?.length;
-
-  const showSectionsCol = !!message;
-  const showSectionDetailCol = showSectionsCol && !!section;
-  const showCodeCol = showSectionDetailCol && section === "doing" && tool !== undefined;
+  const showBlocksCol = !!message && rank >= 2;
+  const showDetailCol = showBlocksCol && block !== undefined;
 
   return (
     <div className="overflow-x-auto rounded-xl border bg-[var(--color-card)]">
@@ -131,7 +131,7 @@ export function FinderView({
         </Column>
 
         {/* Col 2 — Messages (Summary list) */}
-        <Column title="Summary" widthClass="w-80">
+        <Column title="Messages" widthClass="w-80">
           {visibleMessages.length === 0 ? (
             <Empty>No messages match the current filter.</Empty>
           ) : (
@@ -144,115 +144,108 @@ export function FinderView({
                   title={m.summary}
                   role={m.role}
                   hint={
-                    messageToolCount(m) > 0
-                      ? `${messageToolCount(m)} tool${
-                          messageToolCount(m) === 1 ? "" : "s"
+                    toolBlockCount(m) > 0
+                      ? `${toolBlockCount(m)} tool${
+                          toolBlockCount(m) === 1 ? "" : "s"
                         }`
                       : undefined
                   }
-                  showChevron
+                  showChevron={(m.blocks?.length ?? 0) > 0}
                 />
               ))}
             </ul>
           )}
         </Column>
 
-        {/* Col 3 — Sections of selected message: Thinking + Doing */}
-        {showSectionsCol ? (
-          <Column title="Sections" widthClass="w-64">
-            {!hasThinking && !hasDoing ? (
-              <Empty>This message has no thinking or doing content.</Empty>
+        {/* Col 3 — Chronological blocks of selected message */}
+        {showBlocksCol ? (
+          <Column title="Blocks" widthClass="w-80">
+            {visibleBlocks.length === 0 ? (
+              <Empty>
+                {rank === 2
+                  ? "No thinking blocks at this depth. Switch Detail to Doing or Code to see tool calls."
+                  : "This message has no body."}
+              </Empty>
             ) : (
               <ul>
-                {hasThinking ? (
+                {visibleBlocks.map(({ block: b, origIdx }) => (
                   <FinderItem
-                    active={section === "thinking"}
-                    onClick={() => {
-                      setSection("thinking");
-                      setToolIdx(undefined);
-                    }}
-                    title="Thinking"
-                    hint="raw text"
-                    icon={<Sparkles className="h-3 w-3 text-purple-500" />}
-                    showChevron
+                    key={origIdx}
+                    active={blockIdx === origIdx}
+                    onClick={() => setBlockIdx(origIdx)}
+                    title={blockHeadline(b)}
+                    icon={
+                      b.type === "thinking" ? (
+                        <Sparkles className="h-3 w-3 shrink-0 text-purple-500" />
+                      ) : (
+                        <Wrench className="h-3 w-3 shrink-0 text-amber-500" />
+                      )
+                    }
+                    hint={b.type === "tool" ? b.tool : undefined}
+                    showChevron={
+                      b.type === "tool" && !!(b.details || b.result)
+                    }
                   />
-                ) : null}
-                {hasDoing ? (
-                  <FinderItem
-                    active={section === "doing"}
-                    onClick={() => {
-                      setSection("doing");
-                      setToolIdx(undefined);
-                    }}
-                    title={`Doing · ${message!.tool_calls!.length} tool${
-                      message!.tool_calls!.length === 1 ? "" : "s"
-                    }`}
-                    icon={<Wrench className="h-3 w-3 text-amber-500" />}
-                    showChevron
-                  />
-                ) : null}
+                ))}
               </ul>
             )}
           </Column>
         ) : null}
 
-        {/* Col 4 — Section detail (thinking text OR list of tools) */}
-        {showSectionDetailCol && section === "thinking" && message?.content ? (
-          <Column title="Thinking" widthClass="w-[26rem]" flush>
-            <div className="p-3">
-              <p className="whitespace-pre-wrap text-sm text-[var(--color-muted-foreground)]">
-                {message.content}
-              </p>
-            </div>
-          </Column>
-        ) : null}
-
-        {showSectionDetailCol && section === "doing" && message?.tool_calls?.length ? (
-          <Column title="Doing" widthClass="w-80">
-            <ul>
-              {message.tool_calls.map((tc, i) => (
-                <FinderItem
-                  key={i}
-                  active={toolIdx === i}
-                  onClick={() => setToolIdx(i)}
-                  title={tc.summary}
-                  hint={tc.tool}
-                  icon={<Wrench className="h-3 w-3 text-[var(--color-muted-foreground)]" />}
-                  showChevron={!!(tc.details || tc.result)}
-                />
-              ))}
-            </ul>
-          </Column>
-        ) : null}
-
-        {/* Col 5 — Code (selected tool's command/result) */}
-        {showCodeCol && tool ? (
-          <Column title="Code" widthClass="w-[26rem]" flush>
-            <div className="space-y-3 p-3 text-xs">
-              <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-[var(--color-muted-foreground)]">
-                <CodeIcon className="h-3 w-3" />
-                {tool.tool}
-              </div>
-              <p className="text-sm">{tool.summary}</p>
-              {tool.details ? (
-                <pre className="whitespace-pre-wrap break-words rounded-md border border-[var(--color-border)]/60 bg-[var(--color-muted)]/30 p-2 font-mono text-[11px] text-[var(--color-muted-foreground)]">
-                  {tool.details}
-                </pre>
-              ) : null}
-              {tool.result ? (
-                <pre className="whitespace-pre-wrap break-words rounded-md border border-[var(--color-border)]/60 bg-[var(--color-muted)]/30 p-2 font-mono text-[11px] text-[var(--color-muted-foreground)]">
-                  {tool.result}
-                </pre>
-              ) : null}
-              {!tool.details && !tool.result ? (
-                <p className="rounded-md border border-dashed bg-[var(--color-muted)]/30 p-2 text-[11px] italic text-[var(--color-muted-foreground)]">
-                  No command detail captured for this tool call.
+        {/* Col 4 — Detail (thinking text or tool code) */}
+        {showDetailCol ? (
+          <Column
+            title={block!.type === "thinking" ? "Thinking" : "Code"}
+            widthClass="w-[28rem]"
+            flush
+          >
+            {block!.type === "thinking" ? (
+              <div className="p-3">
+                <p className="whitespace-pre-wrap text-sm text-[var(--color-foreground)]">
+                  {block!.text}
                 </p>
-              ) : null}
-            </div>
+              </div>
+            ) : (
+              <ToolDetail tool={block as ToolBlock} />
+            )}
           </Column>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+function blockHeadline(b: MessageBlock): string {
+  if (b.type === "thinking") {
+    const first = b.text.split("\n").find((l) => l.trim()) ?? b.text;
+    return first.length > 100 ? first.slice(0, 100) + "…" : first;
+  }
+  return b.summary || b.tool;
+}
+
+function ToolDetail({ tool }: { tool: ToolBlock }) {
+  return (
+    <div className="space-y-3 p-3 text-xs">
+      <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-[var(--color-muted-foreground)]">
+        <CodeIcon className="h-3 w-3" />
+        {tool.tool}
+      </div>
+      <p className="text-sm">{tool.summary}</p>
+      {tool.details ? (
+        <pre className="whitespace-pre-wrap break-words rounded-md border border-[var(--color-border)]/60 bg-[var(--color-muted)]/30 p-2 font-mono text-[11px] text-[var(--color-foreground)]">
+          {tool.details}
+        </pre>
+      ) : null}
+      {tool.result ? (
+        <pre className="whitespace-pre-wrap break-words rounded-md border border-[var(--color-border)]/60 bg-[var(--color-muted)]/30 p-2 font-mono text-[11px] text-[var(--color-muted-foreground)]">
+          {tool.result}
+        </pre>
+      ) : null}
+      {!tool.details && !tool.result ? (
+        <p className="rounded-md border border-dashed bg-[var(--color-muted)]/30 p-2 text-[11px] italic text-[var(--color-muted-foreground)]">
+          No command detail captured for this tool call.
+        </p>
+      ) : null}
     </div>
   );
 }

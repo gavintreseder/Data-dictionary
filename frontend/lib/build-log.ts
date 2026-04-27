@@ -2,26 +2,32 @@ import raw from "@/data/build_log.json";
 
 export type Role = "user" | "assistant";
 
-export interface ToolCall {
+export interface ThinkingBlock {
+  type: "thinking";
+  text: string;
+}
+
+export interface ToolBlock {
+  type: "tool";
   tool: string;
   summary: string;
   details?: string;
   result?: string;
 }
 
+export type MessageBlock = ThinkingBlock | ToolBlock;
+
 export interface BuildMessage {
   id: string;
   role: Role;
   summary: string;
-  content?: string;
-  tool_calls?: ToolCall[];
+  blocks?: MessageBlock[];
 }
 
 export interface BuildSession {
   id: string;
   title: string;
   summary?: string;
-  placeholder?: boolean;
   note?: string;
   messages: BuildMessage[];
 }
@@ -32,14 +38,18 @@ export interface BuildLog {
 
 export const buildLog = raw as BuildLog;
 
-export function messageToolCount(m: BuildMessage): number {
-  return m.tool_calls?.length ?? 0;
+export function blockCount(m: BuildMessage): number {
+  return m.blocks?.length ?? 0;
 }
 
-export function sessionMessageCount(s: BuildSession): number {
-  return s.messages.length;
+export function toolBlockCount(m: BuildMessage): number {
+  return m.blocks?.filter((b) => b.type === "tool").length ?? 0;
+}
+
+export function thinkingBlockCount(m: BuildMessage): number {
+  return m.blocks?.filter((b) => b.type === "thinking").length ?? 0;
 }
 
 export function totalToolCalls(s: BuildSession): number {
-  return s.messages.reduce((acc, m) => acc + messageToolCount(m), 0);
+  return s.messages.reduce((acc, m) => acc + toolBlockCount(m), 0);
 }

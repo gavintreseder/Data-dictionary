@@ -14,9 +14,9 @@ import { cn } from "@/lib/utils";
 import {
   type BuildLog,
   type BuildMessage,
-  type BuildSession,
-  type ToolCall,
-  messageToolCount,
+  type MessageBlock,
+  type ToolBlock,
+  toolBlockCount,
 } from "@/lib/build-log";
 import type { Depth, RoleFilter } from "@/app/behind-the-scenes/page";
 
@@ -27,14 +27,10 @@ const DEPTH_RANK: Record<Depth, number> = {
   code: 4,
 };
 
-// Node id helpers — each level encodes a unique key
 const sessionKey = (sid: string) => `s/${sid}`;
 const messageKey = (sid: string, mid: string) => `s/${sid}/m/${mid}`;
-const thinkingKey = (sid: string, mid: string) =>
-  `s/${sid}/m/${mid}/thinking`;
-const doingKey = (sid: string, mid: string) => `s/${sid}/m/${mid}/doing`;
-const toolKey = (sid: string, mid: string, i: number) =>
-  `s/${sid}/m/${mid}/doing/t/${i}`;
+const blockKey = (sid: string, mid: string, i: number) =>
+  `s/${sid}/m/${mid}/b/${i}`;
 
 export function TreeView({
   log,
@@ -47,25 +43,19 @@ export function TreeView({
 }) {
   const rank = DEPTH_RANK[depth];
 
-  // Compute the auto-expanded set based on depth + role filter
   const autoOpen = useMemo(() => {
     const open = new Set<string>();
     for (const s of log.sessions) {
-      // Always auto-open sessions so messages are visible
       open.add(sessionKey(s.id));
-      const visibleMessages = s.messages.filter(
+      const visible = s.messages.filter(
         (m) => roleFilter === "all" || m.role === roleFilter
       );
-      for (const m of visibleMessages) {
-        // Level 2 — open the message node so Thinking/Doing become visible
+      for (const m of visible) {
         if (rank >= 2) open.add(messageKey(s.id, m.id));
-        // Level 2 — open the Thinking child if there is content
-        if (rank >= 2 && m.content) open.add(thinkingKey(s.id, m.id));
-        // Level 3 — open the Doing child so tools are listed
-        if (rank >= 3 && m.tool_calls?.length) open.add(doingKey(s.id, m.id));
-        // Level 4 — open every tool node so its Code child shows
-        if (rank >= 4 && m.tool_calls?.length) {
-          m.tool_calls.forEach((_, i) => open.add(toolKey(s.id, m.id, i)));
+        if (rank >= 4 && m.blocks) {
+          m.blocks.forEach((b, i) => {
+            if (b.type === "tool") open.add(blockKey(s.id, m.id, i));
+          });
         }
       }
     }
@@ -73,58 +63,55 @@ export function TreeView({
   }, [log, rank, roleFilter]);
 
   const [openNodes, setOpenNodes] = useState<Set<string>>(autoOpen);
+  useEffect(() => setOpenNodes(new Set(autoOpen)), [autoOpen]);
 
-  // Resync when filter/depth changes
-  useEffect(() => {
-    setOpenNodes(new Set(autoOpen));
-  }, [autoOpen]);
-
-  const toggle = (key: string) => {
+  const toggle = (k: string) => {
     setOpenNodes((prev) => {
       const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
+      if (next.has(k)) next.delete(k);
+      else next.add(k);
       return next;
     });
   };
-  const isOpen = (key: string) => openNodes.has(key);
+  const isOpen = (k: string) => openNodes.has(k);
 
   return (
     <div className="rounded-xl border bg-[var(--color-card)] p-2 font-mono text-sm">
       <ul>
         {log.sessions.map((s) => {
-          const visibleMessages = s.messages.filter(
+          const sk = sessionKey(s.id);
+          const open = isOpen(sk);
+          const visible = s.messages.filter(
             (m) => roleFilter === "all" || m.role === roleFilter
           );
-          const sKey = sessionKey(s.id);
-          const open = isOpen(sKey);
           return (
             <li key={s.id}>
               <Row
-                onClick={() => toggle(sKey)}
+                onClick={() => toggle(sk)}
                 open={open}
-                hasChildren={visibleMessages.length > 0}
-                icon={<FolderOpen className="h-3.5 w-3.5 text-[var(--color-muted-foreground)]" />}
-                ariaExpanded={open}
+                hasChildren={visible.length > 0}
+                icon={
+                  <FolderOpen className="h-3.5 w-3.5 text-[var(--color-muted-foreground)]" />
+                }
               >
                 <span className="font-medium">{s.title}</span>
                 <span className="ml-2 text-[10px] text-[var(--color-muted-foreground)]">
-                  {visibleMessages.length} msg
-                  {visibleMessages.length === 1 ? "" : "s"}
+                  {visible.length} msg{visible.length === 1 ? "" : "s"}
                 </span>
               </Row>
               {open ? (
                 <Branch>
-                  {visibleMessages.length === 0 ? (
+                  {visible.length === 0 ? (
                     <p className="px-2 py-1 text-[11px] italic text-[var(--color-muted-foreground)]">
                       No messages match the current filter.
                     </p>
                   ) : (
-                    visibleMessages.map((m) => (
+                    visible.map((m) => (
                       <MessageNode
                         key={m.id}
                         sessionId={s.id}
                         message={m}
+                        rank={rank}
                         isOpen={isOpen}
                         toggle={toggle}
                       />
@@ -143,146 +130,80 @@ export function TreeView({
 function MessageNode({
   sessionId,
   message,
+  rank,
   isOpen,
   toggle,
 }: {
   sessionId: string;
   message: BuildMessage;
+  rank: number;
   isOpen: (k: string) => boolean;
   toggle: (k: string) => void;
 }) {
-  const mKey = messageKey(sessionId, message.id);
-  const open = isOpen(mKey);
-  const hasThinking = !!message.content;
-  const hasDoing = !!message.tool_calls?.length;
-  const hasChildren = hasThinking || hasDoing;
-
+  const mk = messageKey(sessionId, message.id);
+  const open = isOpen(mk);
+  const blocks = filterBlocks(message.blocks ?? [], rank);
+  const hasChildren = blocks.length > 0;
+  const tools = toolBlockCount(message);
   return (
     <li>
       <Row
-        onClick={() => hasChildren && toggle(mKey)}
+        onClick={() => hasChildren && toggle(mk)}
         open={open}
         hasChildren={hasChildren}
         icon={<RolePill role={message.role} />}
-        ariaExpanded={open}
       >
         <span className="flex-1 truncate text-xs font-sans">
           {message.summary}
         </span>
-        {messageToolCount(message) > 0 ? (
+        {tools > 0 ? (
           <span className="shrink-0 rounded bg-[var(--color-muted)] px-1.5 py-0.5 text-[10px] font-sans text-[var(--color-muted-foreground)]">
-            {messageToolCount(message)} tools
+            {tools} tool{tools === 1 ? "" : "s"}
           </span>
         ) : null}
       </Row>
       {open ? (
         <Branch>
-          {hasThinking ? (
-            <ThinkingNode
-              sessionId={sessionId}
-              messageId={message.id}
-              content={message.content!}
-              isOpen={isOpen}
-              toggle={toggle}
-            />
-          ) : null}
-          {hasDoing ? (
-            <DoingNode
-              sessionId={sessionId}
-              messageId={message.id}
-              tools={message.tool_calls!}
-              isOpen={isOpen}
-              toggle={toggle}
-            />
-          ) : null}
+          {blocks.map((b, idx) => {
+            // Find original index for stable key
+            const origIdx = message.blocks!.indexOf(b);
+            return b.type === "thinking" ? (
+              <ThinkingNode key={idx} text={b.text} />
+            ) : (
+              <ToolNode
+                key={idx}
+                sessionId={sessionId}
+                messageId={message.id}
+                index={origIdx}
+                tool={b}
+                isOpen={isOpen}
+                toggle={toggle}
+              />
+            );
+          })}
         </Branch>
       ) : null}
     </li>
   );
 }
 
-function ThinkingNode({
-  sessionId,
-  messageId,
-  content,
-  isOpen,
-  toggle,
-}: {
-  sessionId: string;
-  messageId: string;
-  content: string;
-  isOpen: (k: string) => boolean;
-  toggle: (k: string) => void;
-}) {
-  const k = thinkingKey(sessionId, messageId);
-  const open = isOpen(k);
+function ThinkingNode({ text }: { text: string }) {
+  // Show the first line as a leaf row; full text on hover/expanded view
+  const first = text.split("\n").find((l) => l.trim()) ?? text;
   return (
     <li>
-      <Row
-        onClick={() => toggle(k)}
-        open={open}
-        hasChildren
-        icon={<Sparkles className="h-3 w-3 text-purple-500" />}
-        ariaExpanded={open}
-      >
-        <span className="text-xs font-sans uppercase tracking-wider text-[var(--color-muted-foreground)]">
-          Thinking
+      <div className="flex items-start gap-1.5 px-2 py-1">
+        <span className="w-3" />
+        <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-purple-500" />
+        <span className="text-xs font-sans leading-relaxed text-[var(--color-foreground)]">
+          {first.length > 200 ? first.slice(0, 200) + "…" : first}
+          {text !== first ? (
+            <span className="ml-1 text-[10px] text-[var(--color-muted-foreground)]">
+              ({text.length} chars)
+            </span>
+          ) : null}
         </span>
-      </Row>
-      {open ? (
-        <Branch>
-          <p className="whitespace-pre-wrap rounded-md bg-[var(--color-muted)]/40 p-2 text-xs font-sans text-[var(--color-muted-foreground)]">
-            {content}
-          </p>
-        </Branch>
-      ) : null}
-    </li>
-  );
-}
-
-function DoingNode({
-  sessionId,
-  messageId,
-  tools,
-  isOpen,
-  toggle,
-}: {
-  sessionId: string;
-  messageId: string;
-  tools: ToolCall[];
-  isOpen: (k: string) => boolean;
-  toggle: (k: string) => void;
-}) {
-  const k = doingKey(sessionId, messageId);
-  const open = isOpen(k);
-  return (
-    <li>
-      <Row
-        onClick={() => toggle(k)}
-        open={open}
-        hasChildren
-        icon={<Wrench className="h-3 w-3 text-amber-500" />}
-        ariaExpanded={open}
-      >
-        <span className="text-xs font-sans uppercase tracking-wider text-[var(--color-muted-foreground)]">
-          Doing · {tools.length} tool{tools.length === 1 ? "" : "s"}
-        </span>
-      </Row>
-      {open ? (
-        <Branch>
-          {tools.map((tc, i) => (
-            <ToolNode
-              key={i}
-              sessionId={sessionId}
-              messageId={messageId}
-              index={i}
-              tool={tc}
-              isOpen={isOpen}
-              toggle={toggle}
-            />
-          ))}
-        </Branch>
-      ) : null}
+      </div>
     </li>
   );
 }
@@ -298,11 +219,11 @@ function ToolNode({
   sessionId: string;
   messageId: string;
   index: number;
-  tool: ToolCall;
+  tool: ToolBlock;
   isOpen: (k: string) => boolean;
   toggle: (k: string) => void;
 }) {
-  const k = toolKey(sessionId, messageId, index);
+  const k = blockKey(sessionId, messageId, index);
   const open = isOpen(k);
   const hasCode = !!(tool.details || tool.result);
   return (
@@ -311,43 +232,43 @@ function ToolNode({
         onClick={() => hasCode && toggle(k)}
         open={open}
         hasChildren={hasCode}
-        icon={<Wrench className="h-3 w-3 text-[var(--color-muted-foreground)]" />}
-        ariaExpanded={open}
+        icon={<Wrench className="h-3 w-3 text-amber-500" />}
       >
         <span className="text-xs font-sans">
           <span className="font-mono font-medium">{tool.tool}</span>{" "}
           <span className="text-[var(--color-muted-foreground)]">·</span>{" "}
-          {tool.summary}
+          <span className="text-[var(--color-muted-foreground)]">
+            {tool.summary}
+          </span>
         </span>
       </Row>
       {open && hasCode ? (
         <Branch>
-          <CodeBlock tool={tool} />
+          <div className="rounded-md border border-[var(--color-border)]/60 bg-[var(--color-muted)]/30 p-2">
+            <div className="mb-1 flex items-center gap-1 text-[10px] uppercase tracking-wider text-[var(--color-muted-foreground)]">
+              <CodeIcon className="h-3 w-3" /> Code
+            </div>
+            {tool.details ? (
+              <pre className="whitespace-pre-wrap break-words font-mono text-[11px] text-[var(--color-foreground)]">
+                {tool.details}
+              </pre>
+            ) : null}
+            {tool.result ? (
+              <pre className="mt-2 whitespace-pre-wrap break-words border-t border-[var(--color-border)]/60 pt-2 font-mono text-[11px] text-[var(--color-muted-foreground)]">
+                {tool.result}
+              </pre>
+            ) : null}
+          </div>
         </Branch>
       ) : null}
     </li>
   );
 }
 
-function CodeBlock({ tool }: { tool: ToolCall }) {
-  return (
-    <div className="rounded-md border border-[var(--color-border)]/60 bg-[var(--color-muted)]/30 p-2 text-[11px] leading-relaxed">
-      <div className="mb-1 flex items-center gap-1 text-[10px] uppercase tracking-wider text-[var(--color-muted-foreground)]">
-        <CodeIcon className="h-3 w-3" />
-        Code
-      </div>
-      {tool.details ? (
-        <pre className="whitespace-pre-wrap break-words font-mono text-[var(--color-muted-foreground)]">
-          {tool.details}
-        </pre>
-      ) : null}
-      {tool.result ? (
-        <pre className="mt-2 whitespace-pre-wrap break-words border-t border-[var(--color-border)]/60 pt-2 font-mono text-[var(--color-muted-foreground)]">
-          {tool.result}
-        </pre>
-      ) : null}
-    </div>
-  );
+function filterBlocks(blocks: MessageBlock[], rank: number): MessageBlock[] {
+  if (rank <= 1) return [];
+  if (rank === 2) return blocks.filter((b) => b.type === "thinking");
+  return blocks;
 }
 
 function Row({
@@ -355,21 +276,19 @@ function Row({
   open,
   hasChildren,
   icon,
-  ariaExpanded,
   children,
 }: {
   onClick: () => void;
   open: boolean;
   hasChildren: boolean;
   icon: React.ReactNode;
-  ariaExpanded: boolean;
   children: React.ReactNode;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-expanded={ariaExpanded}
+      aria-expanded={open}
       className={cn(
         "flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left",
         hasChildren ? "hover:bg-[var(--color-muted)]" : "cursor-default"
