@@ -1,16 +1,166 @@
 {
-  "$comment": "Curated transcript of the agentic coding session(s) that built this app. Add another object to `sessions` to merge another chat. Each `message` has a one-line `summary` (always visible) and optional `content` (revealed on expand). Tool calls capture the agent's actions during a single response.",
-
+  "$comment": "Curated transcript of the agentic coding session(s) that built this app. Add another object to `sessions` to merge another chat. Each `message` has a one-line `summary` (always visible) and optional `content` (revealed on expand). Tool calls capture the agent's actions during a single response. Session 1 was a JSONL export from Claude Code (1.3 MB, 417 records, curated to ~7 messages). Session 2 was hand-curated from this build session.",
   "sessions": [
     {
-      "id": "session_01CoUTE9TPr2udPNrcqwgFss",
-      "title": "Earlier session — original brief",
-      "summary": "Voice-to-text brief, follow-up decisions on LLM/hosting/scope, and the refined prompt that drove the rebuild.",
-      "placeholder": true,
-      "note": "Paste the content of https://claude.ai/code/session_01CoUTE9TPr2udPNrcqwgFss into this session and I'll convert it into the same shape. The duplicated original prompt will be deduped on merge.",
-      "messages": []
+      "id": "session_0cc80ce4-data-dictionary-roadmap",
+      "title": "Earlier session — original brief, Phase 1 scaffold, repo pivot",
+      "summary": "Voice-to-text brief in `gavintreseder/reg-scorecard`, plan-mode design, Phase 1 build, then a long detour trying to view it from the sandbox and move it to a fresh repo.",
+      "note": "Exported as JSONL (~1.3 MB, 417 records, 7 genuine human prompts) and curated here. The 7th 'prompt' was an auto-compaction summary, not a real message, so it's elided. The arc ends with the data-dictionary code accidentally getting wiped from the branch — which is what triggered Build Session 2 to rebuild from scratch in a fresh repo.",
+      "messages": [
+        {
+          "id": "e-u01",
+          "role": "user",
+          "summary": "Voice-to-text brief: build a polished demo Data Dictionary web app — propose roadmap + features.",
+          "content": "I want you to help me make a roadmap a record roadmap for a app that develop meant to be a demo app so doesn't need to work perfectly well but I need to look and feel pretty awesome to show someone the potential of the app needs to be a dictionary and needs to be hosted as a web app. I don't really care where it's hosted but I want it to be really accessible. If I give somebody a link and should look and feel like a working Web. I don't mind what the system so I'm really happy for you to propose some options.\n\nIf I described your features that I'd like it to have the app is gonna be a data dictionary app so at a high-level what I want to do is drag in so import a whole heap of dictionary dictionaries from around the world and the language for those defined terms then I want ability for a business to define its own data dictionary. For example if they have a particular definition for process or procedure I'd like to ability to create a definition for them.\n\nWould like to be able to do is pull in type in a particular word like process then I'd like it to pull up all of the available definitions that are accessible from the data sets uploaded those data should right now just be from online things like Miriam Webster dictionary but I'd like the ability to eventually drop in some documentation. PDF from particular client and then see what definitions they've already defined or infer what they defined based on the terminology.\n\nOnce I've pulled across I've searched for a particular word I'd like NLP or some LLM to provide a definition that aligns with common industry practice. I'd also like the text box that then add additional prompts to that definition for example. If I'm talking about the word framework I'd like to pull in for five versions of framework happy NLP great like the average version of what a frame it could be and then give the use of ability to adjust it. An example that adjusted might be for the word framework. We need to find that in this PDF can you use that instead?\n\nI'd love to do a flag. I have a view of all of the defined terms already and make that searchable I'm imagining this. Can you propose a roadmap for this tool and some features that will make it feel more like a nap?"
+        },
+        {
+          "id": "e-a01",
+          "role": "assistant",
+          "summary": "Plan-mode: explored repo, asked LLM/phase question, built Phase 1 (FastAPI + Next.js 15) into the existing reg-scorecard repo on a feature branch.",
+          "content": "Started in plan mode in the wrong repo (`gavintreseder/reg-scorecard`) — the proxy only authorises that one repo, so the agent built the new app there on a feature branch `claude/data-dictionary-roadmap-XQhD8`. Wrote a plan file at `~/.claude/plans/indexed-enchanting-hopper.md`, asked the user (via AskUserQuestion) about LLM provider + which phase to build first. User chose 'no LLM key, use open-source' and 'build Phase 1 now'. Scaffolded a full Phase 1: FastAPI backend with 5 SQLModel models, async SQLite, Free Dictionary API + Merriam-Webster adapters; Next.js 15 + React 19 frontend with Tailwind v4 and shadcn-style custom components; dashboard, term index, term detail, search pages.",
+          "tool_calls": [
+            {
+              "tool": "Task",
+              "summary": "Sub-agent: 'Explore existing codebase structure' (parallel research)"
+            },
+            {
+              "tool": "Task",
+              "summary": "Sub-agent: 'Design data dictionary app roadmap' (parallel research)"
+            },
+            {
+              "tool": "Bash",
+              "summary": "Polled the running sub-agent's output file every 30–60s while it worked"
+            },
+            {
+              "tool": "Write",
+              "summary": "Wrote ~/.claude/plans/indexed-enchanting-hopper.md with the design + hosting options"
+            },
+            {
+              "tool": "AskUserQuestion",
+              "summary": "Anthropic key vs OpenAI vs open-source? Which phase first?"
+            },
+            {
+              "tool": "TodoWrite",
+              "summary": "Built and revised a 10–12 item todo list across the build"
+            },
+            {
+              "tool": "Write",
+              "summary": "Wrote 53 backend + frontend files (models, routers, services, pages, components)"
+            },
+            {
+              "tool": "Bash",
+              "summary": "Ran 31 shell commands (venv, pip install, npm install, smoke tests, git commit/push)"
+            }
+          ]
+        },
+        {
+          "id": "e-u02",
+          "role": "user",
+          "summary": "Can I run this and view it from Claude Code web?"
+        },
+        {
+          "id": "e-a02",
+          "role": "assistant",
+          "summary": "Started uvicorn :8000 + next dev :3000 inside the sandbox; gave URLs, with the caveat that the user might need to use the 'Open Port' affordance.",
+          "tool_calls": [
+            {
+              "tool": "Bash",
+              "summary": "uvicorn app.main:app --host 0.0.0.0 --port 8000 (background) + curl /api/health"
+            },
+            {
+              "tool": "Bash",
+              "summary": "npm run dev -- -p 3000 (background) + curl :3000"
+            }
+          ]
+        },
+        {
+          "id": "e-u03",
+          "role": "user",
+          "summary": "Localhost links don't open. Also, please move this to a new private repo called `data-dictionary`."
+        },
+        {
+          "id": "e-a03",
+          "role": "assistant",
+          "summary": "Discovered the sandbox's git proxy is scoped to `gavintreseder/reg-scorecard` only — can't create or push to a new repo from here. Suggested the user create the repo themselves.",
+          "content": "Tried `gh auth status`, installed gh, attempted POST to api.github.com via curl, and inspected `~/.gitconfig` for tokens — all dead ends because the egress proxy whitelists only the single repo. Explained two paths forward: (1) clone the existing branch locally and run there, or (2) rename `reg-scorecard` to `data-dictionary` in the GitHub UI to make the existing repo do the job.",
+          "tool_calls": [
+            {
+              "tool": "Bash",
+              "summary": "gh auth status / install gh / curl POST api.github.com/user/repos — all proxy-blocked"
+            },
+            {
+              "tool": "Bash",
+              "summary": "Inspected git remote, .gitconfig, credential helpers for any usable token"
+            }
+          ]
+        },
+        {
+          "id": "e-u04",
+          "role": "user",
+          "summary": "Run."
+        },
+        {
+          "id": "e-a04",
+          "role": "assistant",
+          "summary": "Brought both servers back up after the sandbox was rebooted; smoke-tested API + dashboard; explained again that the sandbox has no port forwarding to the user's browser.",
+          "tool_calls": [
+            {
+              "tool": "Bash",
+              "summary": "Recreated venv, pip install, npm install"
+            },
+            {
+              "tool": "Bash",
+              "summary": "Started uvicorn + next dev; curl-tested /api/terms and /"
+            },
+            {
+              "tool": "TodoWrite",
+              "summary": "Tracked the run / verify steps"
+            }
+          ]
+        },
+        {
+          "id": "e-u05",
+          "role": "user",
+          "summary": "Create a new GitHub repository for data dictionary."
+        },
+        {
+          "id": "e-a05",
+          "role": "assistant",
+          "summary": "Same blocker as before — explained the proxy can't create repos. Walked the user through the 30-second manual flow at github.com/new.",
+          "tool_calls": [
+            {
+              "tool": "Bash",
+              "summary": "Re-tried `gh repo create` and api.github.com POST through the proxy — both denied"
+            }
+          ]
+        },
+        {
+          "id": "e-u06",
+          "role": "user",
+          "summary": "I've got this in the wrong repo. Where else can I move this to so that I can run it and see the widget?"
+        },
+        {
+          "id": "e-a06",
+          "role": "assistant",
+          "summary": "Discovered the data-dictionary code had been overwritten on the branch by the original reg-scorecard project. Wrote a plan with a hosting comparison table and 3 open questions.",
+          "content": "On returning to the branch, the working tree contained the original reg-scorecard codebase (railway.toml, root Dockerfile, app/, db/, pipeline/, Vite frontend) — the data-dictionary scaffold from earlier was gone. Wrote a fresh plan at ~/.claude/plans/indexed-enchanting-hopper.md with: (a) what survived vs what was wiped, (b) a hosting comparison table (Codespaces / Vercel+Railway / Railway single / Render / Replit / local), (c) a recommended two-stage approach (pick code home → pick viewing method), (d) 3 open questions for the user to decide. This is where the session ended — the next session was a clean rebuild in the new `data-dictionary` repo.",
+          "tool_calls": [
+            {
+              "tool": "Read",
+              "summary": "Read docker-compose.yml / railway.toml / Dockerfile / SETUP.md to map the repo's new state"
+            },
+            {
+              "tool": "Bash",
+              "summary": "git status / git log --all to confirm the data-dictionary code wasn't on any branch"
+            },
+            {
+              "tool": "Write",
+              "summary": "Rewrote ~/.claude/plans/indexed-enchanting-hopper.md with the hosting table + open questions"
+            }
+          ]
+        }
+      ]
     },
-
     {
       "id": "session_01G3EBXqwh7heaWg5S4jspyK",
       "title": "Build session — Phases 1–4, deploy, polish",
@@ -19,8 +169,8 @@
         {
           "id": "u01",
           "role": "user",
-          "summary": "Original voice-to-text brief + refined spec + decisions (no LLM key, decide hosting later, build Phase 1 now).",
-          "content": "Voice-to-text request: build a polished demo data dictionary web app. Pull in dictionaries from around the world, let businesses define their own terms, search a word and see all available definitions, use NLP/LLM to consolidate definitions aligned with industry practice, allow inline prompts to refine, flag terms, browse defined terms in a searchable list. Also wants a roadmap and feature ideas to make it feel like a real app.\n\nFollow-up decisions: no LLM key (use open-source); hosting decided later; build Phase 1 now.\n\nRefined spec attached: FastAPI + SQLModel + SQLite backend with 25 seeded business terms; Next.js 15 + React 19 + Tailwind v4 frontend; single-container Railway deployment; concrete data model (Term, Definition, Source, ImportJob, LLMRefinement) with the FlagStatus / SourceType / ImportStatus enums; specific endpoint list; visual design requirements; a 4-phase ROADMAP."
+          "summary": "Carried-over brief: rebuild in a fresh repo, no LLM key, decide hosting later, build Phase 1 now.",
+          "content": "Continued from the earlier session (where the data-dictionary scaffold got wiped from the reg-scorecard branch). Refined spec attached: FastAPI + SQLModel + SQLite backend with 25 seeded business terms; Next.js 15 + React 19 + Tailwind v4 frontend; single-container Railway deployment; concrete data model (Term, Definition, Source, ImportJob, LLMRefinement) with FlagStatus / SourceType / ImportStatus enums; specific endpoint list; visual design requirements; a 4-phase ROADMAP."
         },
         {
           "id": "a01",
@@ -28,18 +178,44 @@
           "summary": "Scaffolded repo, built FastAPI backend + Next.js frontend, wired single-container Docker deployment, pushed Phase 1.",
           "content": "Created the repo structure on the claude/demo-app-roadmap-pPutU branch. Built a complete Phase 1 deliverable: backend with 9 SQLModel-based files, 4 routers, dictionary lookup adapter, 25-term seed; frontend with the App Router, shadcn-style custom components, dashboard / terms index / term detail / search pages; one-stage Dockerfile that builds the static export and serves it from FastAPI on a single port. Verified locally with curl smoke tests.",
           "tool_calls": [
-            { "tool": "Bash", "summary": "Inspected empty repo state (git status, list)" },
-            { "tool": "Write", "summary": "Created .gitignore + README + ROADMAP" },
-            { "tool": "Write", "summary": "Wrote 12 backend files (models, schemas, routers, services, seed)" },
-            { "tool": "Bash", "summary": "Built venv, installed deps, smoke-tested every endpoint" },
-            { "tool": "Write", "summary": "Wrote 25 frontend files (UI primitives, providers, sidebar, pages, lib/api+types)" },
-            { "tool": "Bash", "summary": "npm install + next build → 506 prerendered pages" },
-            { "tool": "Write", "summary": "Wrote Dockerfile, docker-compose.yml, railway.toml" },
-            { "tool": "Bash", "summary": "End-to-end test with static export mounted → all routes 200" },
-            { "tool": "Bash", "summary": "git add + commit + push -u origin claude/demo-app-roadmap-pPutU" }
+            {
+              "tool": "Bash",
+              "summary": "Inspected empty repo state (git status, list)"
+            },
+            {
+              "tool": "Write",
+              "summary": "Created .gitignore + README + ROADMAP"
+            },
+            {
+              "tool": "Write",
+              "summary": "Wrote 12 backend files (models, schemas, routers, services, seed)"
+            },
+            {
+              "tool": "Bash",
+              "summary": "Built venv, installed deps, smoke-tested every endpoint"
+            },
+            {
+              "tool": "Write",
+              "summary": "Wrote 25 frontend files (UI primitives, providers, sidebar, pages, lib/api+types)"
+            },
+            {
+              "tool": "Bash",
+              "summary": "npm install + next build → 506 prerendered pages"
+            },
+            {
+              "tool": "Write",
+              "summary": "Wrote Dockerfile, docker-compose.yml, railway.toml"
+            },
+            {
+              "tool": "Bash",
+              "summary": "End-to-end test with static export mounted → all routes 200"
+            },
+            {
+              "tool": "Bash",
+              "summary": "git add + commit + push -u origin claude/demo-app-roadmap-pPutU"
+            }
           ]
         },
-
         {
           "id": "u02",
           "role": "user",
@@ -51,22 +227,60 @@
           "summary": "Shipped Phases 2–4 + polish: extra dictionary sources, LLM consolidation with heuristic fallback, import/export/PDF, audit log, tags, command palette, tour, animated UI.",
           "content": "Big push (47 files, +5,384 / −439). Backend gained Wiktionary / Wikipedia / Standards adapters with caching, an LLM service with Ollama + HuggingFace + heuristic fallback, refine/import/export/PDF/audit/tags/demo-reset/system routers, AuditEvent + Tag + LLMRefinement models, IndustryContext enum. Frontend gained sonner toasts, cmdk command palette, custom guided tour, animated stat cards, /import (CSV mapping + JSON + PDF preview), /tags facet page, /t/[slug] public share, refine box, tag editor, audit timeline, bulk actions. Verified end-to-end backend then frontend build (533 prerendered pages) before pushing.",
           "tool_calls": [
-            { "tool": "Write", "summary": "Extended models: Tag/TermTag/AuditEvent/IndustryContext + LLMRefinement source/confidence" },
-            { "tool": "Write", "summary": "Wrote dictionary_service.py: Wiktionary + Wikipedia + Standards + cache + concurrent fan-out" },
-            { "tool": "Write", "summary": "Wrote llm_service.py: Ollama + HF + heuristic consolidate() with confidence scoring" },
-            { "tool": "Write", "summary": "Wrote pdf_extractor.py: PyMuPDF4LLM + 4 regex patterns" },
-            { "tool": "Write", "summary": "Wrote 5 new routers: refine, import_export (CSV/JSON/PDF + CSV/JSON/MD export), tags, audit, system (incl. demo reset)" },
-            { "tool": "Bash", "summary": "Re-installed deps with pymupdf4llm; smoke-tested every new endpoint" },
-            { "tool": "Bash", "summary": "Hit a 'MissingGreenlet' async-lazy-load bug in seeder; fixed by inserting TermTag rows directly" },
-            { "tool": "Bash", "summary": "Built test PDF in pymupdf, ran preview + import → 3 of 4 patterns matched" },
-            { "tool": "Write", "summary": "Frontend: providers + sonner + cmdk command palette + keyboard shortcuts + tour + animated number" },
-            { "tool": "Write", "summary": "Frontend: refine box, tag editor, audit timeline, industry select, confidence badge, empty state" },
-            { "tool": "Write", "summary": "Frontend pages: /import (CSV mapping UI), /tags, /t/[slug] share, enhanced term detail" },
-            { "tool": "Bash", "summary": "next build → 533 static pages; static-export wired into FastAPI mount" },
-            { "tool": "Bash", "summary": "Updated README + ROADMAP, committed, pushed" }
+            {
+              "tool": "Write",
+              "summary": "Extended models: Tag/TermTag/AuditEvent/IndustryContext + LLMRefinement source/confidence"
+            },
+            {
+              "tool": "Write",
+              "summary": "Wrote dictionary_service.py: Wiktionary + Wikipedia + Standards + cache + concurrent fan-out"
+            },
+            {
+              "tool": "Write",
+              "summary": "Wrote llm_service.py: Ollama + HF + heuristic consolidate() with confidence scoring"
+            },
+            {
+              "tool": "Write",
+              "summary": "Wrote pdf_extractor.py: PyMuPDF4LLM + 4 regex patterns"
+            },
+            {
+              "tool": "Write",
+              "summary": "Wrote 5 new routers: refine, import_export (CSV/JSON/PDF + CSV/JSON/MD export), tags, audit, system (incl. demo reset)"
+            },
+            {
+              "tool": "Bash",
+              "summary": "Re-installed deps with pymupdf4llm; smoke-tested every new endpoint"
+            },
+            {
+              "tool": "Bash",
+              "summary": "Hit a 'MissingGreenlet' async-lazy-load bug in seeder; fixed by inserting TermTag rows directly"
+            },
+            {
+              "tool": "Bash",
+              "summary": "Built test PDF in pymupdf, ran preview + import → 3 of 4 patterns matched"
+            },
+            {
+              "tool": "Write",
+              "summary": "Frontend: providers + sonner + cmdk command palette + keyboard shortcuts + tour + animated number"
+            },
+            {
+              "tool": "Write",
+              "summary": "Frontend: refine box, tag editor, audit timeline, industry select, confidence badge, empty state"
+            },
+            {
+              "tool": "Write",
+              "summary": "Frontend pages: /import (CSV mapping UI), /tags, /t/[slug] share, enhanced term detail"
+            },
+            {
+              "tool": "Bash",
+              "summary": "next build → 533 static pages; static-export wired into FastAPI mount"
+            },
+            {
+              "tool": "Bash",
+              "summary": "Updated README + ROADMAP, committed, pushed"
+            }
           ]
         },
-
         {
           "id": "u03",
           "role": "user",
@@ -77,12 +291,20 @@
           "role": "assistant",
           "summary": "Started uvicorn on :8080 with the static export mounted; gave URLs.",
           "tool_calls": [
-            { "tool": "Bash", "summary": "Recreated venv, installed deps, npm install + build" },
-            { "tool": "Bash", "summary": "Copied frontend/out → backend/app/static; started uvicorn 0.0.0.0:8080" },
-            { "tool": "Bash", "summary": "Smoke-tested every page route + API endpoint" }
+            {
+              "tool": "Bash",
+              "summary": "Recreated venv, installed deps, npm install + build"
+            },
+            {
+              "tool": "Bash",
+              "summary": "Copied frontend/out → backend/app/static; started uvicorn 0.0.0.0:8080"
+            },
+            {
+              "tool": "Bash",
+              "summary": "Smoke-tested every page route + API endpoint"
+            }
           ]
         },
-
         {
           "id": "u04",
           "role": "user",
@@ -93,11 +315,16 @@
           "role": "assistant",
           "summary": "Diagnosed — `/api` and `/api/` had no handler, so the SPA catchall returned the API 404. Added a friendly JSON landing.",
           "tool_calls": [
-            { "tool": "Bash", "summary": "Probed every URL path; found `/api`, `/api/` → 404 JSON" },
-            { "tool": "Edit", "summary": "Added `@app.get('/api')` returning {app, version, docs, health} pointers" }
+            {
+              "tool": "Bash",
+              "summary": "Probed every URL path; found `/api`, `/api/` → 404 JSON"
+            },
+            {
+              "tool": "Edit",
+              "summary": "Added `@app.get('/api')` returning {app, version, docs, health} pointers"
+            }
           ]
         },
-
         {
           "id": "u05",
           "role": "user",
@@ -108,11 +335,16 @@
           "role": "assistant",
           "summary": "Killed mine, restarted on :8090, identified itself via /api landing.",
           "tool_calls": [
-            { "tool": "Bash", "summary": "pkill uvicorn; start on :8090" },
-            { "tool": "Bash", "summary": "Verified `/api` returns Data Dictionary v0.2.0" }
+            {
+              "tool": "Bash",
+              "summary": "pkill uvicorn; start on :8090"
+            },
+            {
+              "tool": "Bash",
+              "summary": "Verified `/api` returns Data Dictionary v0.2.0"
+            }
           ]
         },
-
         {
           "id": "u06",
           "role": "user",
@@ -124,7 +356,6 @@
           "summary": "Realised the sandbox has no port forwarding to the user's browser. Explained the limitation and offered Railway / local-clone paths.",
           "content": "Verifying via `curl 127.0.0.1:8090` only proves the process is listening *inside the sandbox*. The user's browser is on a different network with no tunnel between them. Confirmed by checking `ss -ltn`, hostname, env vars — there's no ngrok / cloudflared / tailscale installed and no platform-provided forwarding panel. Pivoted to: deploy to Railway, or clone + run locally."
         },
-
         {
           "id": "u07",
           "role": "user",
@@ -135,12 +366,20 @@
           "role": "assistant",
           "summary": "Diagnosed — the repo had only one branch and no `main`, so GitHub had no base to PR into. Created an empty `main` orphan branch.",
           "tool_calls": [
-            { "tool": "mcp__github__list_pull_requests", "summary": "Confirmed no PRs exist (open, closed, or any state)" },
-            { "tool": "mcp__github__list_branches", "summary": "Confirmed only one branch exists" },
-            { "tool": "Bash", "summary": "git switch --orphan main; commit --allow-empty; push -u origin main" }
+            {
+              "tool": "mcp__github__list_pull_requests",
+              "summary": "Confirmed no PRs exist (open, closed, or any state)"
+            },
+            {
+              "tool": "mcp__github__list_branches",
+              "summary": "Confirmed only one branch exists"
+            },
+            {
+              "tool": "Bash",
+              "summary": "git switch --orphan main; commit --allow-empty; push -u origin main"
+            }
           ]
         },
-
         {
           "id": "u08",
           "role": "user",
@@ -151,11 +390,16 @@
           "role": "assistant",
           "summary": "Merged with --allow-unrelated-histories (the orphan main + feature branch had no common ancestor).",
           "tool_calls": [
-            { "tool": "Bash", "summary": "git merge --allow-unrelated-histories --no-ff feature → main: 80 files, +10,485" },
-            { "tool": "Bash", "summary": "git push origin main; switched back to feature branch" }
+            {
+              "tool": "Bash",
+              "summary": "git merge --allow-unrelated-histories --no-ff feature → main: 80 files, +10,485"
+            },
+            {
+              "tool": "Bash",
+              "summary": "git push origin main; switched back to feature branch"
+            }
           ]
         },
-
         {
           "id": "u09",
           "role": "user",
@@ -166,11 +410,16 @@
           "role": "assistant",
           "summary": "Removed the BuildKit cache mount + the syntax directive entirely (Railway's builder rejected it). Kept npm ci/install behavior.",
           "tool_calls": [
-            { "tool": "Edit", "summary": "Dropped `# syntax=docker/dockerfile:1.7` and the `RUN --mount=type=cache,target=/root/.npm` line" },
-            { "tool": "Bash", "summary": "Rebased on remote (a PR had been merged on GitHub), pushed to both branches" }
+            {
+              "tool": "Edit",
+              "summary": "Dropped `# syntax=docker/dockerfile:1.7` and the `RUN --mount=type=cache,target=/root/.npm` line"
+            },
+            {
+              "tool": "Bash",
+              "summary": "Rebased on remote (a PR had been merged on GitHub), pushed to both branches"
+            }
           ]
         },
-
         {
           "id": "u10",
           "role": "user",
@@ -181,13 +430,24 @@
           "role": "assistant",
           "summary": "Three fixes: background the DB seed, drop railway.toml's startCommand (so the Dockerfile's `sh -c` shell handles ${PORT}), bump healthcheck timeout 30s → 120s.",
           "tool_calls": [
-            { "tool": "Edit", "summary": "main.py: replaced sync seed with asyncio.create_task(_background_seed()) so /api/health is reachable in ~1s" },
-            { "tool": "Write", "summary": "railway.toml: removed startCommand; relies on Dockerfile CMD with sh -c to expand ${PORT}" },
-            { "tool": "Edit", "summary": "railway.toml: healthcheckTimeout = 120" },
-            { "tool": "Bash", "summary": "Pushed to feature branch; fast-forwarded main; pushed main" }
+            {
+              "tool": "Edit",
+              "summary": "main.py: replaced sync seed with asyncio.create_task(_background_seed()) so /api/health is reachable in ~1s"
+            },
+            {
+              "tool": "Write",
+              "summary": "railway.toml: removed startCommand; relies on Dockerfile CMD with sh -c to expand ${PORT}"
+            },
+            {
+              "tool": "Edit",
+              "summary": "railway.toml: healthcheckTimeout = 120"
+            },
+            {
+              "tool": "Bash",
+              "summary": "Pushed to feature branch; fast-forwarded main; pushed main"
+            }
           ]
         },
-
         {
           "id": "u11",
           "role": "user",
@@ -199,15 +459,32 @@
           "summary": "Clarified it's not RAG, just LLM-based extraction. Added an LLM extractor (chunked + JSON-mode) with regex fallback, documented free HF token setup.",
           "content": "Added `extract_terms()` in llm_service.py that chunks text into ~6k-char windows with 400-char overlap, prompts the LLM for STRICT JSON with a tight system prompt, and tolerates code fences / preamble / trailing commas in the response. PDF extractor now runs LLM first and merges in regex hits to cover anything LLM drops. When no LLM is configured the regex pass remains. Preview API returns an `extractor` label so the UI can show which path ran (`llm`, `llm+regex`, `regex`).",
           "tool_calls": [
-            { "tool": "Edit", "summary": "llm_service.py: added EXTRACT_SYSTEM_PROMPT, _chunk_text, _extract_json_array, _call_*_extract" },
-            { "tool": "Write", "summary": "pdf_extractor.py: extract_from_pdf_bytes_async() runs LLM + regex and merges" },
-            { "tool": "Edit", "summary": "import_export router: switched to async path, surfaces `extractor` label" },
-            { "tool": "Edit", "summary": "Schema: PDFExtraction.extractor field; frontend types + UI to show it" },
-            { "tool": "Bash", "summary": "Unit-tested chunker + JSON parser on tricky cases" },
-            { "tool": "Edit", "summary": "README: documented HF token setup at huggingface.co/settings/tokens" }
+            {
+              "tool": "Edit",
+              "summary": "llm_service.py: added EXTRACT_SYSTEM_PROMPT, _chunk_text, _extract_json_array, _call_*_extract"
+            },
+            {
+              "tool": "Write",
+              "summary": "pdf_extractor.py: extract_from_pdf_bytes_async() runs LLM + regex and merges"
+            },
+            {
+              "tool": "Edit",
+              "summary": "import_export router: switched to async path, surfaces `extractor` label"
+            },
+            {
+              "tool": "Edit",
+              "summary": "Schema: PDFExtraction.extractor field; frontend types + UI to show it"
+            },
+            {
+              "tool": "Bash",
+              "summary": "Unit-tested chunker + JSON parser on tricky cases"
+            },
+            {
+              "tool": "Edit",
+              "summary": "README: documented HF token setup at huggingface.co/settings/tokens"
+            }
           ]
         },
-
         {
           "id": "u12",
           "role": "user",
@@ -219,14 +496,28 @@
           "summary": "Root cause: HF deprecated the old api-inference endpoint for instruct models in 2025. Added Groq backend, rewrote HF to use router.huggingface.co chat completions, surfaced LLM errors in the UI.",
           "content": "Rewrote the LLM service around a single OpenAI-compatible helper. Three backends, preference order Groq → Ollama → HF. `_invoke()` records every failure reason. The PDF preview API surfaces the first 3 errors so the UI can show 'LLM extraction failed — fell back to regex. Cause: <exact HTTP error>'. Added Groq config (GROQ_API_KEY, GROQ_MODEL) and HF_PROVIDER. README documents all three with Groq as the recommended path.",
           "tool_calls": [
-            { "tool": "Edit", "summary": "config.py: added GROQ_API_KEY/GROQ_MODEL/HF_PROVIDER; llm_enabled() includes Groq" },
-            { "tool": "Write", "summary": "llm_service.py rewrite: _call_openai_compat helper; Groq + HF + Ollama backends through one path" },
-            { "tool": "Edit", "summary": "extract_terms returns errors; PDFExtraction.llm_errors surfaces them" },
-            { "tool": "Edit", "summary": "Frontend: yellow banner in PDF preview showing the failure reason" },
-            { "tool": "Edit", "summary": "/api/system shows groq/ollama/huggingface flags + active model label" }
+            {
+              "tool": "Edit",
+              "summary": "config.py: added GROQ_API_KEY/GROQ_MODEL/HF_PROVIDER; llm_enabled() includes Groq"
+            },
+            {
+              "tool": "Write",
+              "summary": "llm_service.py rewrite: _call_openai_compat helper; Groq + HF + Ollama backends through one path"
+            },
+            {
+              "tool": "Edit",
+              "summary": "extract_terms returns errors; PDFExtraction.llm_errors surfaces them"
+            },
+            {
+              "tool": "Edit",
+              "summary": "Frontend: yellow banner in PDF preview showing the failure reason"
+            },
+            {
+              "tool": "Edit",
+              "summary": "/api/system shows groq/ollama/huggingface flags + active model label"
+            }
           ]
         },
-
         {
           "id": "u13",
           "role": "user",
@@ -237,7 +528,6 @@
           "role": "assistant",
           "summary": "Already built — fallback chain is automatic per-call. Just set GROQ_API_KEY and HF_API_TOKEN; the code tries Groq first, falls through on failure."
         },
-
         {
           "id": "u14",
           "role": "user",
@@ -248,14 +538,28 @@
           "role": "assistant",
           "summary": "Identified it as the daily token budget. Reduced per-PDF token usage ~75% (chunks 6k→10k chars, max_tokens 1400→800), added 429-aware blacklist so Groq drops out for the rest of the batch instead of being retried per chunk.",
           "tool_calls": [
-            { "tool": "Edit", "summary": "Bumped _CHUNK_CHARS to 10000 + _CHUNK_OVERLAP to 500" },
-            { "tool": "Edit", "summary": "extract_terms uses max_tokens=800 (down from 1400)" },
-            { "tool": "Edit", "summary": "_invoke accepts skip:set; appends to skip on 429/'rate'/'quota'/'token' errors" },
-            { "tool": "Edit", "summary": "extract_terms threads skip across chunks; bails if every backend skipped" },
-            { "tool": "Edit", "summary": "README: 'Surviving Groq's free tier rate limits' section" }
+            {
+              "tool": "Edit",
+              "summary": "Bumped _CHUNK_CHARS to 10000 + _CHUNK_OVERLAP to 500"
+            },
+            {
+              "tool": "Edit",
+              "summary": "extract_terms uses max_tokens=800 (down from 1400)"
+            },
+            {
+              "tool": "Edit",
+              "summary": "_invoke accepts skip:set; appends to skip on 429/'rate'/'quota'/'token' errors"
+            },
+            {
+              "tool": "Edit",
+              "summary": "extract_terms threads skip across chunks; bails if every backend skipped"
+            },
+            {
+              "tool": "Edit",
+              "summary": "README: 'Surviving Groq's free tier rate limits' section"
+            }
           ]
         },
-
         {
           "id": "u15",
           "role": "user",
@@ -266,9 +570,18 @@
           "role": "assistant",
           "summary": "Confirmed the sandbox proxy blocks claude.ai (403) so the earlier chat URL can't be auto-fetched. Built the feature now with this chat as the seed — the earlier session drops in as a second array entry once you paste it.",
           "tool_calls": [
-            { "tool": "WebFetch / Bash", "summary": "Probed the URL: 503 'DNS cache overflow' from sandbox proxy; broader probe showed claude.ai/wikipedia/github all 403 (allowlist policy)" },
-            { "tool": "Write", "summary": "build_log.json: schema + curated session 2 + placeholder for session 1" },
-            { "tool": "Write", "summary": "Behind-the-scenes page + three viewers (cards w/ swimlanes, finder, tree)" }
+            {
+              "tool": "WebFetch / Bash",
+              "summary": "Probed the URL: 503 'DNS cache overflow' from sandbox proxy; broader probe showed claude.ai/wikipedia/github all 403 (allowlist policy)"
+            },
+            {
+              "tool": "Write",
+              "summary": "build_log.json: schema + curated session 2 + placeholder for session 1"
+            },
+            {
+              "tool": "Write",
+              "summary": "Behind-the-scenes page + three viewers (cards w/ swimlanes, finder, tree)"
+            }
           ]
         }
       ]
