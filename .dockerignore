@@ -7,7 +7,7 @@
 **/.pytest_cache
 **/.mypy_cache
 **/.ruff_cache
-**/data
+backend/data
 *.db
 *.db-journal
 .git
