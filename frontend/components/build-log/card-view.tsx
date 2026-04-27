@@ -1,13 +1,18 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ChevronRight, Sparkles, Wrench } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { ToolCallRow } from "@/components/build-log/tool-call-row";
+import { ToolBlockView } from "@/components/build-log/tool-block";
 import { RolePill } from "@/components/build-log/role-pill";
 import { cn } from "@/lib/utils";
-import type { BuildLog, BuildMessage, BuildSession } from "@/lib/build-log";
+import type {
+  BuildLog,
+  BuildMessage,
+  BuildSession,
+  MessageBlock,
+} from "@/lib/build-log";
 import type { Depth, RoleFilter } from "@/app/behind-the-scenes/page";
 
 const DEPTH_RANK: Record<Depth, number> = {
@@ -94,25 +99,19 @@ function MessageCard({
   index: number;
   depth: Depth;
 }) {
-  const isUser = message.role === "user";
   const rank = DEPTH_RANK[depth];
+  const isUser = message.role === "user";
+  const hasBody = (message.blocks?.length ?? 0) > 0;
 
-  // Section auto-open state, driven by global depth, with local overrides.
-  const [thinkingOpen, setThinkingOpen] = useState(rank >= 2);
-  const [doingOpen, setDoingOpen] = useState(rank >= 3);
-
-  // Re-sync when global depth changes
+  // Body open = depth >= L2 (Thinking), with a per-card override.
+  const [bodyOpen, setBodyOpen] = useState(rank >= 2);
   useEffect(() => {
-    setThinkingOpen(rank >= 2);
-    setDoingOpen(rank >= 3);
+    setBodyOpen(rank >= 2);
   }, [rank]);
 
   const sideBorder = isUser
     ? "border-l-4 border-blue-500/40"
     : "border-l-4 border-purple-500/40";
-
-  const hasThinking = !!message.content;
-  const hasDoing = !!message.tool_calls?.length;
 
   return (
     <li>
@@ -127,84 +126,58 @@ function MessageCard({
           "px-4 py-3"
         )}
       >
-        {/* Level 1: Summary (always visible) */}
+        {/* Card header: summary + collapse chevron */}
         <header className="flex items-start gap-2">
           <RolePill role={message.role} />
           <p className="flex-1 text-sm leading-snug">{message.summary}</p>
+          {hasBody ? (
+            <button
+              type="button"
+              onClick={() => setBodyOpen((o) => !o)}
+              aria-expanded={bodyOpen}
+              className="shrink-0 rounded-md p-0.5 text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]"
+              title={bodyOpen ? "Collapse" : "Expand"}
+            >
+              <ChevronRight
+                className={cn(
+                  "h-3.5 w-3.5 transition-transform",
+                  bodyOpen && "rotate-90"
+                )}
+              />
+            </button>
+          ) : null}
         </header>
 
-        {/* Level 2: Thinking (collapsible section) */}
-        {hasThinking ? (
-          <Section
-            title="Thinking"
-            icon={Sparkles}
-            open={thinkingOpen}
-            onToggle={() => setThinkingOpen((o) => !o)}
-          >
-            <p className="whitespace-pre-wrap rounded-md bg-[var(--color-muted)]/40 p-3 text-sm leading-relaxed text-[var(--color-muted-foreground)]">
-              {message.content}
-            </p>
-          </Section>
-        ) : null}
-
-        {/* Level 3: Doing (collapsible section listing tool calls).
-            Each tool call in turn opens to Level 4: Code. */}
-        {hasDoing ? (
-          <Section
-            title={`Doing · ${message.tool_calls!.length} tool${
-              message.tool_calls!.length === 1 ? "" : "s"
-            }`}
-            icon={Wrench}
-            open={doingOpen}
-            onToggle={() => setDoingOpen((o) => !o)}
-          >
-            <ul className="space-y-0.5">
-              {message.tool_calls!.map((tc, i) => (
-                <ToolCallRow
-                  key={i}
-                  call={tc}
-                  forceOpen={rank >= 4 ? true : null}
-                />
-              ))}
-            </ul>
-          </Section>
+        {/* Body: chronological stream of blocks, filtered by depth.
+            - L1 Summary: hidden
+            - L2 Thinking: only thinking blocks
+            - L3 Doing: thinking + tool grey lines (code collapsed)
+            - L4 Code: thinking + tool grey lines (code auto-expanded) */}
+        {hasBody && bodyOpen ? (
+          <div className="mt-3 space-y-2 border-t border-[var(--color-border)]/40 pt-3">
+            {filterBlocks(message.blocks!, rank).map((b, i) => (
+              <BlockView key={i} block={b} rank={rank} />
+            ))}
+          </div>
         ) : null}
       </motion.article>
     </li>
   );
 }
 
-function Section({
-  title,
-  icon: Icon,
-  open,
-  onToggle,
-  children,
-}: {
-  title: string;
-  icon: typeof Sparkles;
-  open: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="mt-2">
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={open}
-        className="flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-[11px] font-medium uppercase tracking-wider text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]"
-      >
-        <ChevronRight
-          className={cn(
-            "h-3 w-3 transition-transform",
-            open && "rotate-90"
-          )}
-        />
-        <Icon className="h-3 w-3" />
-        {title}
-      </button>
-      {open ? <div className="mt-1 ml-1 pl-3">{children}</div> : null}
-    </div>
-  );
+function filterBlocks(blocks: MessageBlock[], rank: number): MessageBlock[] {
+  if (rank <= 1) return [];
+  if (rank === 2) return blocks.filter((b) => b.type === "thinking");
+  return blocks; // L3, L4 — show everything
+}
+
+function BlockView({ block, rank }: { block: MessageBlock; rank: number }) {
+  if (block.type === "thinking") {
+    return (
+      <p className="whitespace-pre-wrap text-sm leading-relaxed text-[var(--color-foreground)]">
+        {block.text}
+      </p>
+    );
+  }
+  return <ToolBlockView block={block} forceOpen={rank >= 4 ? true : null} />;
 }

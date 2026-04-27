@@ -79,7 +79,12 @@ export default function BehindTheScenesPage() {
   );
   const totalTools = buildLog.sessions.reduce(
     (acc, s) =>
-      acc + s.messages.reduce((a, m) => a + (m.tool_calls?.length ?? 0), 0),
+      acc +
+      s.messages.reduce(
+        (a, m) =>
+          a + (m.blocks?.filter((b) => b.type === "tool").length ?? 0),
+        0
+      ),
     0
   );
 
