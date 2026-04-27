@@ -103,7 +103,8 @@ function MessageCard({
   const isUser = message.role === "user";
   const hasBody = (message.blocks?.length ?? 0) > 0;
 
-  // Body open = depth >= L2 (Thinking), with a per-card override.
+  // Body open by default at L2+, with a per-card override (clicking the
+  // chevron always works regardless of the global filter).
   const [bodyOpen, setBodyOpen] = useState(rank >= 2);
   useEffect(() => {
     setBodyOpen(rank >= 2);
@@ -126,7 +127,6 @@ function MessageCard({
           "px-4 py-3"
         )}
       >
-        {/* Card header: summary + collapse chevron */}
         <header className="flex items-start gap-2">
           <RolePill role={message.role} />
           <p className="flex-1 text-sm leading-snug">{message.summary}</p>
@@ -136,7 +136,7 @@ function MessageCard({
               onClick={() => setBodyOpen((o) => !o)}
               aria-expanded={bodyOpen}
               className="shrink-0 rounded-md p-0.5 text-[var(--color-muted-foreground)] hover:bg-[var(--color-muted)]"
-              title={bodyOpen ? "Collapse" : "Expand"}
+              title={bodyOpen ? "Collapse body" : "Expand body"}
             >
               <ChevronRight
                 className={cn(
@@ -148,14 +148,12 @@ function MessageCard({
           ) : null}
         </header>
 
-        {/* Body: chronological stream of blocks, filtered by depth.
-            - L1 Summary: hidden
-            - L2 Thinking: only thinking blocks
-            - L3 Doing: thinking + tool grey lines (code collapsed)
-            - L4 Code: thinking + tool grey lines (code auto-expanded) */}
+        {/* Body always renders ALL blocks chronologically — the depth
+            filter only sets initial expansion state, never hides
+            content. */}
         {hasBody && bodyOpen ? (
           <div className="mt-3 space-y-2 border-t border-[var(--color-border)]/40 pt-3">
-            {filterBlocks(message.blocks!, rank).map((b, i) => (
+            {message.blocks!.map((b, i) => (
               <BlockView key={i} block={b} rank={rank} />
             ))}
           </div>
@@ -163,12 +161,6 @@ function MessageCard({
       </motion.article>
     </li>
   );
-}
-
-function filterBlocks(blocks: MessageBlock[], rank: number): MessageBlock[] {
-  if (rank <= 1) return [];
-  if (rank === 2) return blocks.filter((b) => b.type === "thinking");
-  return blocks; // L3, L4 — show everything
 }
 
 function BlockView({ block, rank }: { block: MessageBlock; rank: number }) {
@@ -179,5 +171,7 @@ function BlockView({ block, rank }: { block: MessageBlock; rank: number }) {
       </p>
     );
   }
+  // L4 → auto-expand the tool's code; otherwise leave it collapsed but the
+  // user can still click any chevron to reveal it.
   return <ToolBlockView block={block} forceOpen={rank >= 4 ? true : null} />;
 }

@@ -14,7 +14,6 @@ import { cn } from "@/lib/utils";
 import {
   type BuildLog,
   type BuildMessage,
-  type MessageBlock,
   type ToolBlock,
   toolBlockCount,
 } from "@/lib/build-log";
@@ -130,7 +129,6 @@ export function TreeView({
 function MessageNode({
   sessionId,
   message,
-  rank,
   isOpen,
   toggle,
 }: {
@@ -142,7 +140,9 @@ function MessageNode({
 }) {
   const mk = messageKey(sessionId, message.id);
   const open = isOpen(mk);
-  const blocks = filterBlocks(message.blocks ?? [], rank);
+  // Always render every block — the depth filter only sets initial open
+  // state via autoOpen above; the user can still drill in/out manually.
+  const blocks = message.blocks ?? [];
   const hasChildren = blocks.length > 0;
   const tools = toolBlockCount(message);
   return (
@@ -263,12 +263,6 @@ function ToolNode({
       ) : null}
     </li>
   );
-}
-
-function filterBlocks(blocks: MessageBlock[], rank: number): MessageBlock[] {
-  if (rank <= 1) return [];
-  if (rank === 2) return blocks.filter((b) => b.type === "thinking");
-  return blocks;
 }
 
 function Row({
