@@ -11,90 +11,126 @@ import {
   type BuildMessage,
   type BuildSession,
   messageToolCount,
-  sessionMessageCount,
   totalToolCalls,
 } from "@/lib/build-log";
+import type { Depth, RoleFilter } from "@/app/behind-the-scenes/page";
 
-export function FinderView({ log }: { log: BuildLog }) {
-  const firstSession = log.sessions.find((s) => !s.placeholder)?.id ?? log.sessions[0]?.id;
-
-  const [sessionId, setSessionId] = useState<string | undefined>(firstSession);
+export function FinderView({
+  log,
+  depth,
+  roleFilter,
+}: {
+  log: BuildLog;
+  depth: Depth;
+  roleFilter: RoleFilter;
+}) {
+  const [sessionId, setSessionId] = useState<string | undefined>(
+    log.sessions[0]?.id
+  );
   const [messageId, setMessageId] = useState<string | undefined>();
 
   const session = useMemo(
     () => log.sessions.find((s) => s.id === sessionId),
     [log, sessionId]
   );
-  const message = useMemo(
-    () => session?.messages.find((m) => m.id === messageId),
-    [session, messageId]
+
+  const visibleMessages = useMemo(
+    () =>
+      session?.messages.filter(
+        (m) => roleFilter === "all" || m.role === roleFilter
+      ) ?? [],
+    [session, roleFilter]
   );
 
-  // Pick the first message of the selected session by default
+  const message = useMemo(
+    () => visibleMessages.find((m) => m.id === messageId),
+    [visibleMessages, messageId]
+  );
+
+  // Snap selection to first visible message when session/filter changes
   useEffect(() => {
-    if (!session) return;
-    if (!message || message && !session.messages.some((m) => m.id === message.id)) {
-      setMessageId(session.messages[0]?.id);
+    if (!visibleMessages.length) {
+      setMessageId(undefined);
+      return;
     }
-  }, [session, message]);
+    if (!message) setMessageId(visibleMessages[0].id);
+  }, [visibleMessages, message]);
+
+  const expandToolDetails = depth === "code";
 
   return (
-    <div className="grid h-[640px] grid-cols-1 gap-0 overflow-hidden rounded-xl border bg-[var(--color-card)] md:grid-cols-[14rem_minmax(18rem,1fr)_minmax(20rem,1.4fr)]">
-      {/* Column 1 — sessions */}
+    <div className="grid h-[640px] grid-cols-1 gap-0 overflow-hidden rounded-xl border bg-[var(--color-card)] md:grid-cols-[14rem_minmax(18rem,1.2fr)_minmax(20rem,1.4fr)]">
+      {/* Column 1 — Sessions */}
       <Column title="Sessions">
         <ul>
-          {log.sessions.map((s) => (
-            <FinderItem
-              key={s.id}
-              active={s.id === sessionId}
-              onClick={() => setSessionId(s.id)}
-              title={s.title}
-              hint={
-                s.placeholder
-                  ? "(placeholder)"
-                  : `${sessionMessageCount(s)} msgs · ${totalToolCalls(s)} tools`
-              }
-            />
-          ))}
+          {log.sessions.map((s) => {
+            const visible = s.messages.filter(
+              (m) => roleFilter === "all" || m.role === roleFilter
+            );
+            return (
+              <FinderItem
+                key={s.id}
+                active={s.id === sessionId}
+                onClick={() => setSessionId(s.id)}
+                title={s.title}
+                hint={`${visible.length} msgs · ${totalToolCalls(s)} tools`}
+              />
+            );
+          })}
         </ul>
       </Column>
 
-      {/* Column 2 — messages in selected session */}
-      <Column title={session?.title ?? "Messages"}>
-        {session?.placeholder ? (
+      {/* Column 2 — Summary (the message list, headlined by summary or thinking) */}
+      <Column title="Summary">
+        {visibleMessages.length === 0 ? (
           <p className="px-3 py-4 text-xs italic text-[var(--color-muted-foreground)]">
-            {session.note}
+            No messages match the current filter.
           </p>
         ) : (
           <ul>
-            {session?.messages.map((m) => (
-              <FinderItem
-                key={m.id}
-                active={m.id === messageId}
-                onClick={() => setMessageId(m.id)}
-                title={m.summary}
-                role={m.role}
-                hint={
-                  messageToolCount(m) > 0
-                    ? `${messageToolCount(m)} tool${messageToolCount(m) === 1 ? "" : "s"}`
-                    : undefined
-                }
-              />
-            ))}
+            {visibleMessages.map((m) => {
+              const headline =
+                depth === "thinking" && m.content
+                  ? firstLine(m.content)
+                  : m.summary;
+              return (
+                <FinderItem
+                  key={m.id}
+                  active={m.id === messageId}
+                  onClick={() => setMessageId(m.id)}
+                  title={headline}
+                  role={m.role}
+                  hint={
+                    messageToolCount(m) > 0
+                      ? `${messageToolCount(m)} tool${
+                          messageToolCount(m) === 1 ? "" : "s"
+                        }`
+                      : undefined
+                  }
+                />
+              );
+            })}
           </ul>
         )}
       </Column>
 
-      {/* Column 3 — message detail */}
-      <Column title={message ? message.summary : "Detail"} flush>
-        {message ? <Detail message={message} /> : (
+      {/* Column 3 — Tools (and content for the selected message) */}
+      <Column title="Tools" flush>
+        {message ? (
+          <Detail message={message} depth={depth} expandTools={expandToolDetails} />
+        ) : (
           <p className="px-3 py-4 text-xs text-[var(--color-muted-foreground)]">
-            Select a message to see its content + tool calls.
+            Select a message to see its tool calls.
           </p>
         )}
       </Column>
     </div>
   );
+}
+
+function firstLine(s: string): string {
+  const line = s.split("\n").find((l) => l.trim()) ?? s;
+  return line.length > 200 ? line.slice(0, 200) + "…" : line;
 }
 
 function Column({
@@ -161,14 +197,26 @@ function FinderItem({
   );
 }
 
-function Detail({ message }: { message: BuildMessage }) {
+function Detail({
+  message,
+  depth,
+  expandTools,
+}: {
+  message: BuildMessage;
+  depth: Depth;
+  expandTools: boolean;
+}) {
+  // In Summary mode, surface the curated summary; otherwise show the original thinking.
+  const showThinking =
+    (depth === "thinking" || depth === "doing" || depth === "code") &&
+    !!message.content;
   return (
     <div className="space-y-3 p-3 text-sm">
       <div className="flex flex-wrap items-center gap-2">
         <RolePill role={message.role} />
         <p className="font-medium">{message.summary}</p>
       </div>
-      {message.content ? (
+      {showThinking ? (
         <p className="whitespace-pre-wrap text-[var(--color-muted-foreground)]">
           {message.content}
         </p>
@@ -181,11 +229,19 @@ function Detail({ message }: { message: BuildMessage }) {
           </p>
           <ul className="space-y-0.5">
             {message.tool_calls.map((tc, i) => (
-              <ToolCallRow key={i} call={tc} defaultOpen={false} />
+              <ToolCallRow
+                key={i}
+                call={tc}
+                forceOpen={expandTools ? true : null}
+              />
             ))}
           </ul>
         </div>
-      ) : null}
+      ) : (
+        <p className="text-xs text-[var(--color-muted-foreground)]">
+          This message had no tool calls.
+        </p>
+      )}
     </div>
   );
 }
