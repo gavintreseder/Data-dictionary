@@ -9,6 +9,7 @@ import {
   Search,
   Sparkles,
   Tags,
+  Telescope,
   Upload,
   X,
 } from "lucide-react";
@@ -26,6 +27,7 @@ const NAV_ITEMS = [
   { href: "/tags", label: "Tags", Icon: Tags },
   { href: "/search", label: "Search", Icon: Search },
   { href: "/import", label: "Import", Icon: Upload, tour: "import-link" },
+  { href: "/behind-the-scenes", label: "Behind the scenes", Icon: Telescope },
 ];
 
 export function SidebarNav() {
