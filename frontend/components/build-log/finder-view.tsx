@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import {
   type BuildLog,
   type BuildMessage,
-  type MessageBlock,
+  type ThinkingBlock,
   type ToolBlock,
   toolBlockCount,
   totalToolCalls,
@@ -26,6 +26,10 @@ const DEPTH_RANK: Record<Depth, number> = {
   doing: 3,
   code: 4,
 };
+
+type Selection =
+  | { kind: "thinking"; origIdx: number }
+  | { kind: "tool"; origIdx: number };
 
 export function FinderView({
   log,
@@ -42,7 +46,7 @@ export function FinderView({
     log.sessions[0]?.id
   );
   const [messageId, setMessageId] = useState<string | undefined>();
-  const [blockIdx, setBlockIdx] = useState<number | undefined>();
+  const [selection, setSelection] = useState<Selection | undefined>();
 
   const session = useMemo(
     () => log.sessions.find((s) => s.id === sessionId),
@@ -60,23 +64,33 @@ export function FinderView({
     [visibleMessages, messageId]
   );
 
-  const visibleBlocks = useMemo<
-    Array<{ block: MessageBlock; origIdx: number }>
-  >(() => {
+  // Split the message's blocks into two parallel lists, preserving
+  // their original index so we can pull the right block for the detail
+  // pane.
+  const thinkingBlocks = useMemo(() => {
     if (!message?.blocks) return [];
-    if (rank <= 1) return [];
     return message.blocks
-      .map((block, origIdx) => ({ block, origIdx }))
-      .filter(({ block }) => rank >= 3 || block.type === "thinking");
-  }, [message, rank]);
+      .map((b, origIdx) => ({ block: b, origIdx }))
+      .filter(
+        (entry): entry is { block: ThinkingBlock; origIdx: number } =>
+          entry.block.type === "thinking"
+      );
+  }, [message]);
 
-  const block = useMemo(
-    () =>
-      blockIdx !== undefined
-        ? visibleBlocks.find((b) => b.origIdx === blockIdx)?.block
-        : undefined,
-    [visibleBlocks, blockIdx]
-  );
+  const toolBlocks = useMemo(() => {
+    if (!message?.blocks) return [];
+    return message.blocks
+      .map((b, origIdx) => ({ block: b, origIdx }))
+      .filter(
+        (entry): entry is { block: ToolBlock; origIdx: number } =>
+          entry.block.type === "tool"
+      );
+  }, [message]);
+
+  const selectedBlock = useMemo(() => {
+    if (!message?.blocks || !selection) return undefined;
+    return message.blocks[selection.origIdx];
+  }, [message, selection]);
 
   // Snap message to first visible when filter/session changes
   useEffect(() => {
@@ -89,19 +103,32 @@ export function FinderView({
 
   // Reset block selection when message changes
   useEffect(() => {
-    setBlockIdx(undefined);
+    setSelection(undefined);
   }, [messageId]);
 
-  // Auto-drill: if depth === code, auto-select first tool block
+  // Auto-drill the selection based on the depth filter:
+  //   L1 Summary  → no selection (just sessions + messages visible)
+  //   L2 Thinking → select first thinking block
+  //   L3 Doing    → select first tool block (collapsed code)
+  //   L4 Code     → select first tool block (code visible)
   useEffect(() => {
-    if (rank >= 4 && message?.blocks) {
-      const firstTool = message.blocks.findIndex((b) => b.type === "tool");
-      if (firstTool >= 0) setBlockIdx(firstTool);
+    if (!message) return;
+    if (rank <= 1) {
+      setSelection(undefined);
+      return;
     }
-  }, [rank, message]);
-
-  const showBlocksCol = !!message && rank >= 2;
-  const showDetailCol = showBlocksCol && block !== undefined;
+    if (rank === 2 && thinkingBlocks.length) {
+      setSelection({ kind: "thinking", origIdx: thinkingBlocks[0].origIdx });
+      return;
+    }
+    if (rank >= 3 && toolBlocks.length) {
+      setSelection({ kind: "tool", origIdx: toolBlocks[0].origIdx });
+      return;
+    }
+    if (rank >= 2 && thinkingBlocks.length) {
+      setSelection({ kind: "thinking", origIdx: thinkingBlocks[0].origIdx });
+    }
+  }, [rank, message, thinkingBlocks, toolBlocks]);
 
   return (
     <div className="overflow-x-auto rounded-xl border bg-[var(--color-card)]">
@@ -130,7 +157,7 @@ export function FinderView({
           </ul>
         </Column>
 
-        {/* Col 2 — Messages (Summary list) */}
+        {/* Col 2 — Messages */}
         <Column title="Messages" widthClass="w-80">
           {visibleMessages.length === 0 ? (
             <Empty>No messages match the current filter.</Empty>
@@ -157,34 +184,27 @@ export function FinderView({
           )}
         </Column>
 
-        {/* Col 3 — Chronological blocks of selected message */}
-        {showBlocksCol ? (
-          <Column title="Blocks" widthClass="w-80">
-            {visibleBlocks.length === 0 ? (
-              <Empty>
-                {rank === 2
-                  ? "No thinking blocks at this depth. Switch Detail to Doing or Code to see tool calls."
-                  : "This message has no body."}
-              </Empty>
+        {/* Col 3 — Thinking blocks */}
+        {message ? (
+          <Column title="Thinking" widthClass="w-72">
+            {thinkingBlocks.length === 0 ? (
+              <Empty>No thinking blocks.</Empty>
             ) : (
               <ul>
-                {visibleBlocks.map(({ block: b, origIdx }) => (
+                {thinkingBlocks.map(({ block, origIdx }) => (
                   <FinderItem
                     key={origIdx}
-                    active={blockIdx === origIdx}
-                    onClick={() => setBlockIdx(origIdx)}
-                    title={blockHeadline(b)}
+                    active={
+                      selection?.kind === "thinking" &&
+                      selection.origIdx === origIdx
+                    }
+                    onClick={() => setSelection({ kind: "thinking", origIdx })}
+                    title={firstLine(block.text)}
                     icon={
-                      b.type === "thinking" ? (
-                        <Sparkles className="h-3 w-3 shrink-0 text-purple-500" />
-                      ) : (
-                        <Wrench className="h-3 w-3 shrink-0 text-amber-500" />
-                      )
+                      <Sparkles className="h-3 w-3 shrink-0 text-purple-500" />
                     }
-                    hint={b.type === "tool" ? b.tool : undefined}
-                    showChevron={
-                      b.type === "tool" && !!(b.details || b.result)
-                    }
+                    hint={`#${origIdx + 1}`}
+                    showChevron
                   />
                 ))}
               </ul>
@@ -192,21 +212,49 @@ export function FinderView({
           </Column>
         ) : null}
 
-        {/* Col 4 — Detail (thinking text or tool code) */}
-        {showDetailCol ? (
+        {/* Col 4 — Doing (tool blocks) */}
+        {message ? (
+          <Column title="Doing" widthClass="w-72">
+            {toolBlocks.length === 0 ? (
+              <Empty>No tool calls.</Empty>
+            ) : (
+              <ul>
+                {toolBlocks.map(({ block, origIdx }) => (
+                  <FinderItem
+                    key={origIdx}
+                    active={
+                      selection?.kind === "tool" &&
+                      selection.origIdx === origIdx
+                    }
+                    onClick={() => setSelection({ kind: "tool", origIdx })}
+                    title={block.summary || block.tool}
+                    icon={
+                      <Wrench className="h-3 w-3 shrink-0 text-amber-500" />
+                    }
+                    hint={block.tool}
+                    showChevron={!!(block.details || block.result)}
+                  />
+                ))}
+              </ul>
+            )}
+          </Column>
+        ) : null}
+
+        {/* Col 5 — Detail */}
+        {selectedBlock ? (
           <Column
-            title={block!.type === "thinking" ? "Thinking" : "Code"}
+            title={selectedBlock.type === "thinking" ? "Text" : "Code"}
             widthClass="w-[28rem]"
             flush
           >
-            {block!.type === "thinking" ? (
+            {selectedBlock.type === "thinking" ? (
               <div className="p-3">
                 <p className="whitespace-pre-wrap text-sm text-[var(--color-foreground)]">
-                  {block!.text}
+                  {selectedBlock.text}
                 </p>
               </div>
             ) : (
-              <ToolDetail tool={block as ToolBlock} />
+              <ToolDetail tool={selectedBlock} />
             )}
           </Column>
         ) : null}
@@ -215,12 +263,9 @@ export function FinderView({
   );
 }
 
-function blockHeadline(b: MessageBlock): string {
-  if (b.type === "thinking") {
-    const first = b.text.split("\n").find((l) => l.trim()) ?? b.text;
-    return first.length > 100 ? first.slice(0, 100) + "…" : first;
-  }
-  return b.summary || b.tool;
+function firstLine(s: string): string {
+  const line = s.split("\n").find((l) => l.trim()) ?? s;
+  return line.length > 100 ? line.slice(0, 100) + "…" : line;
 }
 
 function ToolDetail({ tool }: { tool: ToolBlock }) {
