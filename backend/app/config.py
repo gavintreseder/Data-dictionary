@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     hf_model: str = "mistralai/Mistral-7B-Instruct-v0.3"
     hf_provider: str = "hf-inference"  # hf-inference | together | fireworks-ai | ...
     groq_api_key: Optional[str] = None
-    groq_model: str = "llama-3.1-8b-instant"
+    groq_model: str = "openai/gpt-oss-20b"
     llm_timeout: float = 30.0
 
     # Lookup / cache

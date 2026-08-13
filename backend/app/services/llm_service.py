@@ -129,6 +129,7 @@ async def _call_openai_compat(
     json_mode: bool = False,
     timeout: float,
     label: str,
+    extra_payload: Optional[dict] = None,
 ) -> tuple[Optional[str], Optional[str]]:
     """Generic OpenAI-compatible chat-completions POST.
 
@@ -147,6 +148,8 @@ async def _call_openai_compat(
     }
     if json_mode:
         payload["response_format"] = {"type": "json_object"}
+    if extra_payload:
+        payload.update(extra_payload)
 
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -221,6 +224,13 @@ async def _call_ollama(system: str, user: str, *, json_mode: bool, max_tokens: i
 async def _call_groq(system: str, user: str, *, json_mode: bool, max_tokens: int) -> tuple[Optional[str], Optional[str]]:
     if not settings.groq_api_key:
         return (None, None)
+    extra: dict = {}
+    if "gpt-oss" in settings.groq_model:
+        # gpt-oss models reason before answering, and reasoning tokens count
+        # against max_tokens — keep the reasoning short and leave headroom so
+        # the visible answer isn't truncated to nothing.
+        extra["reasoning_effort"] = "low"
+        max_tokens = max_tokens + 1024
     return await _call_openai_compat(
         base_url="https://api.groq.com/openai",
         api_key=settings.groq_api_key,
@@ -231,6 +241,7 @@ async def _call_groq(system: str, user: str, *, json_mode: bool, max_tokens: int
         json_mode=json_mode,
         timeout=settings.llm_timeout,
         label=f"groq:{settings.groq_model}",
+        extra_payload=extra,
     )
 
 
