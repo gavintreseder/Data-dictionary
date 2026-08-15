@@ -92,7 +92,7 @@ All optional; sensible defaults are provided.
 | ----------------- | ---------------------------------------------- | ------------------------------------ |
 | `DATABASE_URL`    | Async SQLAlchemy URL                           | `sqlite+aiosqlite:///./data/dictionary.db` |
 | `GROQ_API_KEY`    | Enables Groq (recommended — free + fast)       | — (heuristic fallback) |
-| `GROQ_MODEL`      | Groq model                                     | `llama-3.1-8b-instant`               |
+| `GROQ_MODEL`      | Groq model                                     | `openai/gpt-oss-20b`                 |
 | `OLLAMA_URL`      | Enables Ollama LLM (e.g. `http://localhost:11434`) | — (heuristic fallback) |
 | `OLLAMA_MODEL`    | Model name for Ollama                          | `llama3.2:3b`                        |
 | `HF_API_TOKEN`    | Enables HuggingFace Inference Providers        | — (heuristic fallback)               |
@@ -121,12 +121,15 @@ Fastest to set up, generous free tier (~30 req/min), sub-second responses.
 2. **API Keys → Create API Key** → copy `gsk_...`
 3. On Railway: **Variables → New Variable** → `GROQ_API_KEY = gsk_...`
 4. Redeploy. `GET /api/system` should show `llm.groq = true` and
-   `model = "groq:llama-3.1-8b-instant"`.
+   `model = "groq:openai/gpt-oss-20b"`.
 
 Override model with `GROQ_MODEL`. Good picks:
-- `llama-3.1-8b-instant` (default, fast)
-- `llama-3.3-70b-versatile` (higher quality, a bit slower)
-- `mixtral-8x7b-32768` (big context window)
+- `openai/gpt-oss-20b` (default, fast)
+- `openai/gpt-oss-120b` (higher quality, a bit slower)
+- `llama-3.3-70b-versatile` (if you prefer a Llama model)
+
+> **Note:** the previous default, `llama-3.1-8b-instant`, is decommissioned
+> on Groq as of August 16, 2026 and will no longer be served.
 
 #### 2. Hugging Face Inference Providers
 
@@ -178,10 +181,10 @@ Three things help:
    automatically blacklists Groq for the rest of that PDF and falls
    through to HF for the remaining chunks. No code change needed —
    just a second env var.
-2. **Switch models on Groq.** `llama-3.1-8b-instant` has the highest
-   free budget; `llama-3.3-70b-versatile` is higher quality but much
-   tighter on tokens. Set `GROQ_MODEL=llama-3.1-8b-instant` if you've
-   been using the 70b.
+2. **Switch models on Groq.** `openai/gpt-oss-20b` has a generous
+   free budget; `openai/gpt-oss-120b` and `llama-3.3-70b-versatile`
+   are higher quality but much tighter on tokens. Set
+   `GROQ_MODEL=openai/gpt-oss-20b` if you've been using a bigger model.
 3. **Split big PDFs.** The chunker already processes long PDFs in
    ~10k-char windows with deduplication — but if you routinely import
    50+ page documents you'll want a paid tier or a self-hosted Ollama.
